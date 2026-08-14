@@ -1,0 +1,532 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-FileCopyrightText: 2014-2016 ownCloud, Inc.
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+namespace OCA\YooMail\Controller;
+
+use OCA\Contacts\Event\LoadContactsOcaApiEvent;
+use OCA\YooMail\AppInfo\Application;
+use OCA\YooMail\Contracts\IMailManager;
+use OCA\YooMail\Contracts\IUserPreferences;
+use OCA\YooMail\Db\SmimeCertificate;
+use OCA\YooMail\Db\TagMapper;
+use OCA\YooMail\Service\AccountService;
+use OCA\YooMail\Service\AiIntegrations\AiIntegrationsService;
+use OCA\YooMail\Service\AliasesService;
+use OCA\YooMail\Service\Classification\ClassificationSettingsService;
+use OCA\YooMail\Service\ContextChat\ContextChatSettingsService;
+use OCA\YooMail\Service\InternalAddressService;
+use OCA\YooMail\Service\OutboxService;
+use OCA\YooMail\Service\QuickActionsService;
+use OCA\YooMail\Service\SmimeService;
+use OCA\Viewer\Event\LoadViewer;
+use OCP\App\IAppManager;
+use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http\Attribute\OpenAPI;
+use OCP\AppFramework\Http\ContentSecurityPolicy;
+use OCP\AppFramework\Http\RedirectResponse;
+use OCP\AppFramework\Http\TemplateResponse;
+use OCP\AppFramework\Services\IInitialState;
+use OCP\Authentication\Exceptions\CredentialsUnavailableException;
+use OCP\Authentication\Exceptions\PasswordUnavailableException;
+use OCP\Authentication\LoginCredentials\IStore as ICredentialStore;
+use OCP\Collaboration\Reference\RenderReferenceEvent;
+use OCP\EventDispatcher\IEventDispatcher;
+use OCP\IConfig;
+use OCP\IRequest;
+use OCP\IURLGenerator;
+use OCP\IUserManager;
+use OCP\IUserSession;
+use OCP\TaskProcessing\TaskTypes\TextToText;
+use OCP\TaskProcessing\TaskTypes\TextToTextSummary;
+use OCP\User\IAvailabilityCoordinator;
+use Psr\Log\LoggerInterface;
+use Throwable;
+use function class_exists;
+use function http_build_query;
+use function json_decode;
+
+#[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
+class PageController extends Controller {
+	private IURLGenerator $urlGenerator;
+	private IConfig $config;
+	private AccountService $accountService;
+	private AliasesService $aliasesService;
+	private ?string $currentUserId;
+	private IUserSession $userSession;
+	private IUserPreferences $preferences;
+	private IMailManager $mailManager;
+	private TagMapper $tagMapper;
+	private IInitialState $initialStateService;
+	private LoggerInterface $logger;
+	private OutboxService $outboxService;
+	private IEventDispatcher $dispatcher;
+	private ICredentialstore $credentialStore;
+	private SmimeService $smimeService;
+	private AiIntegrationsService $aiIntegrationsService;
+	private IUserManager $userManager;
+	private IAvailabilityCoordinator $availabilityCoordinator;
+	private InternalAddressService $internalAddressService;
+	private QuickActionsService $quickActionsService;
+	private ContextChatSettingsService $contextChatSettingsService;
+
+	public function __construct(
+		string $appName,
+		IRequest $request,
+		IURLGenerator $urlGenerator,
+		IConfig $config,
+		AccountService $accountService,
+		AliasesService $aliasesService,
+		?string $userId,
+		IUserSession $userSession,
+		IUserPreferences $preferences,
+		IMailManager $mailManager,
+		TagMapper $tagMapper,
+		IInitialState $initialStateService,
+		LoggerInterface $logger,
+		OutboxService $outboxService,
+		IEventDispatcher $dispatcher,
+		ICredentialStore $credentialStore,
+		SmimeService $smimeService,
+		AiIntegrationsService $aiIntegrationsService,
+		IUserManager $userManager,
+		InternalAddressService $internalAddressService,
+		IAvailabilityCoordinator $availabilityCoordinator,
+		QuickActionsService $quickActionsService,
+		private IAppManager $appManager,
+		ContextChatSettingsService $contextChatSettingsService,
+		private ClassificationSettingsService $classificationSettingsService,
+	) {
+		parent::__construct($appName, $request);
+
+		$this->urlGenerator = $urlGenerator;
+		$this->config = $config;
+		$this->accountService = $accountService;
+		$this->aliasesService = $aliasesService;
+		$this->currentUserId = $userId;
+		$this->userSession = $userSession;
+		$this->preferences = $preferences;
+		$this->mailManager = $mailManager;
+		$this->tagMapper = $tagMapper;
+		$this->initialStateService = $initialStateService;
+		$this->logger = $logger;
+		$this->outboxService = $outboxService;
+		$this->dispatcher = $dispatcher;
+		$this->credentialStore = $credentialStore;
+		$this->smimeService = $smimeService;
+		$this->aiIntegrationsService = $aiIntegrationsService;
+		$this->userManager = $userManager;
+		$this->internalAddressService = $internalAddressService;
+		$this->availabilityCoordinator = $availabilityCoordinator;
+		$this->quickActionsService = $quickActionsService;
+		$this->contextChatSettingsService = $contextChatSettingsService;
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse renders the index page
+	 */
+	public function index(): TemplateResponse {
+		if ($this->currentUserId === null) {
+			// This should not happen as the route requires authentication,
+			// but handle it defensively.
+			return new TemplateResponse($this->appName, 'index');
+		}
+
+		$user = $this->userSession->getUser();
+		if ($user === null) {
+			return new TemplateResponse($this->appName, 'index');
+		}
+
+		if (class_exists(LoadViewer::class)) {
+			$this->dispatcher->dispatchTyped(new LoadViewer());
+		}
+
+		$this->initialStateService->provideInitialState(
+			'debug',
+			$this->config->getSystemValue('debug', false)
+		);
+
+		$this->initialStateService->provideInitialState(
+			'ncVersion',
+			$this->config->getSystemValue('version', '0.0.0')
+		);
+
+		$this->initialStateService->provideInitialState(
+			'mailVersion',
+			$this->appManager->getAppVersion('yoomail'),
+		);
+
+		// Provide the user's configured timezone so the frontend can display
+		// mail timestamps in the user's timezone instead of the browser's.
+		$this->initialStateService->provideInitialState(
+			'timezone',
+			$this->config->getUserValue($this->currentUserId, 'core', 'timezone', 'UTC')
+		);
+
+		// Time display preference: '24' (default) or '12' (AM/PM).
+		// Reserved for a future settings page; frontend defaults to 24h.
+		$this->initialStateService->provideInitialState(
+			'time-format',
+			$this->config->getUserValue($this->currentUserId, 'yoomail', 'time-format', '24')
+		);
+
+		$mailAccounts = $this->accountService->findByUserId($this->currentUserId);
+		$accountsJson = [];
+		foreach ($mailAccounts as $mailAccount) {
+			$json = $mailAccount->jsonSerialize();
+			$json['isDelegated'] = false;
+			$json['aliases'] = $this->aliasesService->findAll($mailAccount->getId(),
+				$this->currentUserId);
+			try {
+				$mailboxes = $this->mailManager->getMailboxes($mailAccount);
+				$json['mailboxes'] = $mailboxes;
+			} catch (Throwable $ex) {
+				$this->logger->critical('Could not load account mailboxes: ' . $ex->getMessage(), [
+					'exception' => $ex,
+				]);
+				$json['mailboxes'] = [];
+				$json['error'] = true;
+			}
+			$accountsJson[] = $json;
+		}
+
+		$delegatedAccounts = $this->accountService->findDelegatedAccounts($this->currentUserId);
+		foreach ($delegatedAccounts as $delegatedAccount) {
+			$json = $delegatedAccount->jsonSerialize();
+			$json['isDelegated'] = true;
+			$json['aliases'] = $this->aliasesService->findAll($delegatedAccount->getId(),
+				$delegatedAccount->getUserId());
+			try {
+				$mailboxes = $this->mailManager->getMailboxes($delegatedAccount);
+				$json['mailboxes'] = $mailboxes;
+			} catch (Throwable $ex) {
+				$this->logger->critical('Could not load delegated account mailboxes: ' . $ex->getMessage(), [
+					'exception' => $ex,
+				]);
+				$json['mailboxes'] = [];
+				$json['error'] = true;
+			}
+			$accountsJson[] = $json;
+		}
+
+		$this->initialStateService->provideInitialState(
+			'accounts',
+			$accountsJson
+		);
+		$this->initialStateService->provideInitialState(
+			'account-settings',
+			json_decode($this->preferences->getPreference($this->currentUserId, 'account-settings', '[]'), true, 512, JSON_THROW_ON_ERROR) ?? []
+		);
+		$this->initialStateService->provideInitialState(
+			'tags',
+			$this->tagMapper->getAllTagsForUser($this->currentUserId)
+		);
+
+		$this->initialStateService->provideInitialState(
+			'internal-addresses-list',
+			$this->internalAddressService->getInternalAddresses($this->currentUserId)
+		);
+
+		$this->initialStateService->provideInitialState(
+			'internal-addresses',
+			$this->preferences->getPreference($this->currentUserId, 'internal-addresses', false)
+		);
+
+		$this->initialStateService->provideInitialState(
+			'smime-sign-aliases',
+			json_decode($this->preferences->getPreference($this->currentUserId, 'smime-sign-aliases', '[]'), true, 512, JSON_THROW_ON_ERROR) ?? []
+		);
+
+		$this->initialStateService->provideInitialState(
+			'sort-order',
+			$this->preferences->getPreference($this->currentUserId, 'sort-order', 'newest')
+		);
+
+		try {
+			$password = $this->credentialStore->getLoginCredentials()->getPassword();
+			$passwordIsUnavailable = $password === null || $password === '';
+		} catch (CredentialsUnavailableException|PasswordUnavailableException $e) {
+			$passwordIsUnavailable = true;
+		}
+		$this->initialStateService->provideInitialState(
+			'password-is-unavailable',
+			$passwordIsUnavailable,
+		);
+
+		$response = new TemplateResponse($this->appName, 'index');
+		$this->initialStateService->provideInitialState('preferences', [
+			'attachment-size-limit' => $this->config->getSystemValue('app.mail.attachment-size-limit', 0),
+			'app-version' => $this->config->getAppValue('yoomail', 'installed_version'),
+			'external-avatars' => $this->preferences->getPreference($this->currentUserId, 'external-avatars', 'true'),
+			'layout-mode' => $this->preferences->getPreference($this->currentUserId, 'layout-mode', 'vertical-split'),
+			'layout-message-view' => $this->preferences->getPreference($this->currentUserId, 'layout-message-view', $this->config->getAppValue('yoomail', 'layout_message_view', 'threaded')),
+			'reply-mode' => $this->preferences->getPreference($this->currentUserId, 'reply-mode', 'top'),
+			'collect-data' => $this->preferences->getPreference($this->currentUserId, 'collect-data', 'true'),
+			'search-priority-body' => $this->preferences->getPreference($this->currentUserId, 'search-priority-body', 'false'),
+			'start-mailbox-id' => $this->preferences->getPreference($this->currentUserId, 'start-mailbox-id'),
+			'follow-up-reminders' => $this->preferences->getPreference($this->currentUserId, 'follow-up-reminders', 'true'),
+			'sort-favorites' => $this->preferences->getPreference($this->currentUserId, 'sort-favorites', 'false'),
+			'index-context-chat' => $this->contextChatSettingsService->isIndexingEnabled($this->currentUserId) ? 'true' : 'false',
+			'compact-mode' => $this->preferences->getPreference($this->currentUserId, 'compact-mode', 'false'),
+		]);
+		$this->initialStateService->provideInitialState(
+			'prefill_displayName',
+			$this->userManager->getDisplayName($this->currentUserId) ?? '',
+		);
+		$this->initialStateService->provideInitialState(
+			'importance_classification_default',
+			$this->classificationSettingsService->isClassificationEnabledByDefault(),
+		);
+		$this->initialStateService->provideInitialState(
+			'prefill_email',
+			$this->config->getUserValue($user->getUID(), 'settings', 'email', '')
+		);
+
+		$this->initialStateService->provideInitialState(
+			'outbox-messages',
+			$this->outboxService->getMessages($user->getUID())
+		);
+		$this->initialStateService->provideInitialState(
+			'quick-actions',
+			$this->quickActionsService->findAll($this->currentUserId),
+		);
+		$googleOauthclientId = $this->config->getAppValue(Application::APP_ID, 'google_oauth_client_id');
+		if (!empty($googleOauthclientId)) {
+			$this->initialStateService->provideInitialState(
+				'google-oauth-url',
+				'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
+					'client_id' => $googleOauthclientId,
+					'redirect_uri' => $this->urlGenerator->linkToRouteAbsolute('mail.googleIntegration.oauthRedirect'),
+					'response_type' => 'code',
+					'prompt' => 'consent',
+					'state' => '_state_', // Replaced by frontend
+					'scope' => 'https://mail.google.com/',
+					'access_type' => 'offline',
+					'login_hint' => '_email_', // Replaced by frontend
+				]),
+			);
+		}
+		$microsoftOauthClientId = $this->config->getAppValue(Application::APP_ID, 'microsoft_oauth_client_id');
+		$microsoftOauthTenantId = $this->config->getAppValue(Application::APP_ID, 'microsoft_oauth_tenant_id', 'common');
+		if (!empty($microsoftOauthClientId) && !empty($microsoftOauthTenantId)) {
+			$this->initialStateService->provideInitialState(
+				'microsoft-oauth-url',
+				"https://login.microsoftonline.com/$microsoftOauthTenantId/oauth2/v2.0/authorize?" . http_build_query([
+					'client_id' => $microsoftOauthClientId,
+					'redirect_uri' => $this->urlGenerator->linkToRouteAbsolute('mail.microsoftIntegration.oauthRedirect'),
+					'response_type' => 'code',
+					'response_mode' => 'query',
+					'state' => '_state_', // Replaced by frontend
+					'scope' => 'offline_access https://outlook.office.com/IMAP.AccessAsUser.All https://outlook.office.com/SMTP.Send',
+					'access_type' => 'offline',
+					'login_hint' => '_email_', // Replaced by frontend
+				]),
+			);
+		}
+
+		// Disable snooze and scheduled send in frontend if ajax cron is used because it is unreliable
+		$cronMode = $this->config->getAppValue('core', 'backgroundjobs_mode', 'ajax');
+		$this->initialStateService->provideInitialState(
+			'disable-scheduled-send',
+			$cronMode === 'ajax',
+		);
+		$this->initialStateService->provideInitialState(
+			'disable-snooze',
+			$cronMode === 'ajax',
+		);
+
+		$this->initialStateService->provideInitialState(
+			'allow-new-accounts',
+			$this->config->getAppValue('yoomail', 'allow_new_mail_accounts', 'yes') === 'yes'
+		);
+
+		$this->initialStateService->provideInitialState(
+			'llm_summaries_available',
+			$this->aiIntegrationsService->isLlmProcessingEnabled() && $this->aiIntegrationsService->isLlmAvailable(TextToTextSummary::ID)
+		);
+
+		$this->initialStateService->provideInitialState(
+			'llm_translation_enabled',
+			$this->aiIntegrationsService->isLlmProcessingEnabled() && $this->aiIntegrationsService->isTaskAvailable('core:text2text:translate')
+		);
+
+		$this->initialStateService->provideInitialState(
+			'llm_freeprompt_available',
+			$this->aiIntegrationsService->isLlmProcessingEnabled() && $this->aiIntegrationsService->isLlmAvailable(TextToText::ID)
+		);
+
+		$this->initialStateService->provideInitialState(
+			'llm_followup_available',
+			$this->aiIntegrationsService->isLlmProcessingEnabled()
+			&& $this->aiIntegrationsService->isLlmAvailable(TextToText::ID)
+		);
+
+		$this->initialStateService->provideInitialState(
+			'context_chat_available',
+			$this->appManager->isEnabledForUser('context_chat')
+		);
+
+		$this->initialStateService->provideInitialState(
+			'smime-certificates',
+			array_map(
+				fn (SmimeCertificate $certificate) => $this->smimeService->enrichCertificate($certificate),
+				$this->smimeService->findAllCertificates($user->getUID()),
+			),
+		);
+
+		$this->initialStateService->provideInitialState(
+			'enable-system-out-of-office',
+			$this->availabilityCoordinator->isEnabled(),
+		);
+
+		$csp = new ContentSecurityPolicy();
+		$csp->addAllowedFrameDomain('\'self\'');
+		$response->setContentSecurityPolicy($csp);
+		$this->dispatcher->dispatchTyped(new RenderReferenceEvent());
+
+		if (class_exists(LoadContactsOcaApiEvent::class)) {
+			$this->dispatcher->dispatchTyped(new LoadContactsOcaApiEvent());
+		}
+
+		return $response;
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function setup(): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function mailbox(int $id): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function mailboxStarred(int $id): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function thread(int $mailboxId, int $id): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function filteredThread(string $filter, int $mailboxId, int $id): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function outbox(): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function outboxMessage(int $messageId): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function draft(int $mailboxId, int $draftId): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function filteredDraft(string $filter, int $mailboxId, int $draftId): TemplateResponse {
+		return $this->index();
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $uri
+	 *
+	 * @return RedirectResponse
+	 */
+	public function compose(string $uri): RedirectResponse {
+		$parts = parse_url($uri);
+		$params = [];
+		if (is_array($parts) && isset($parts['path'])) {
+			$params['to'] = $parts['path'];
+		}
+		if (is_array($parts) && isset($parts['query'])) {
+			$queryParts = explode('&', $parts['query']);
+			foreach ($queryParts as $part) {
+				$pair = explode('=', $part, 2);
+				$params[strtolower($pair[0])] = urldecode($pair[1] ?? '');
+			}
+		}
+
+		array_walk($params,
+			static function (&$value, $key) {
+				$value = "$key=" . urlencode($value);
+			});
+		$name = '?' . implode('&', $params);
+		$baseUrl = $this->urlGenerator->linkToRoute('mail.page.mailto');
+		return new RedirectResponse($baseUrl . $name);
+	}
+	/**
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return TemplateResponse
+	 */
+	public function mailto(): TemplateResponse {
+		return $this->index();
+	}
+}

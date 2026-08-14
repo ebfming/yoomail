@@ -1,0 +1,106 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * SPDX-FileCopyrightText: 2023 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace OCA\YooMail\Controller;
+
+use Exception;
+use OCA\YooMail\AppInfo\Application;
+use OCA\YooMail\Contracts\IMailManager;
+use OCA\YooMail\Http\JsonResponse;
+use OCA\YooMail\IMAP\IMAPClientFactory;
+use OCA\YooMail\Service\AccountService;
+use OCA\YooMail\Service\DelegationService;
+use OCP\AppFramework\Controller;
+use OCP\AppFramework\Db\DoesNotExistException;
+use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\OpenAPI;
+use OCP\Http\Client\IClientService;
+use OCP\IRequest;
+use Psr\Log\LoggerInterface;
+
+#[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
+class ListController extends Controller {
+	private IMailManager $mailManager;
+	private AccountService $accountService;
+	private IMAPClientFactory $clientFactory;
+	private IClientService $httpClientService;
+	private LoggerInterface $logger;
+	private ?string $currentUserId;
+	private DelegationService $delegationService;
+
+	public function __construct(IRequest $request,
+		IMailManager $mailManager,
+		AccountService $accountService,
+		IMAPClientFactory $clientFactory,
+		IClientService $httpClientService,
+		LoggerInterface $logger,
+		?string $userId,
+		DelegationService $delegationService) {
+		parent::__construct(Application::APP_ID, $request);
+		$this->mailManager = $mailManager;
+		$this->accountService = $accountService;
+		$this->clientFactory = $clientFactory;
+		$this->request = $request;
+		$this->httpClientService = $httpClientService;
+		$this->logger = $logger;
+		$this->currentUserId = $userId;
+		$this->delegationService = $delegationService;
+	}
+
+	/**
+	 * @NoAdminRequired
+	 * @UserRateThrottle(limit=10, period=3600)
+	 */
+	public function unsubscribe(int $id): JsonResponse {
+		if ($this->currentUserId === null) {
+			return JsonResponse::fail([], Http::STATUS_UNAUTHORIZED);
+		}
+
+		try {
+			$effectiveUserId = $this->delegationService->resolveMessageUserId($id, $this->currentUserId);
+			$message = $this->mailManager->getMessage($effectiveUserId, $id);
+			$mailbox = $this->mailManager->getMailbox($effectiveUserId, $message->getMailboxId());
+			$account = $this->accountService->find($effectiveUserId, $mailbox->getAccountId());
+		} catch (DoesNotExistException $e) {
+			return JsonResponse::fail(null, Http::STATUS_NOT_FOUND);
+		}
+
+		$client = $this->clientFactory->getClient($account);
+		try {
+			$imapMessage = $this->mailManager->getImapMessage(
+				$client,
+				$account,
+				$mailbox,
+				$message->getUid(),
+				true
+			);
+			$unsubscribeUrl = $imapMessage->getUnsubscribeUrl();
+			if ($unsubscribeUrl === null || !$imapMessage->isOneClickUnsubscribe()) {
+				return JsonResponse::fail(null, Http::STATUS_FORBIDDEN);
+			}
+
+			$httpClient = $this->httpClientService->newClient();
+			$httpClient->post($unsubscribeUrl, [
+				'body' => [
+					'List-Unsubscribe' => 'One-Click'
+				]
+			]);
+		} catch (Exception $e) {
+			$this->logger->error('Could not unsubscribe mailing list', [
+				'exception' => $e,
+			]);
+			return JsonResponse::error('Unknown error');
+		} finally {
+			$client->logout();
+		}
+		$this->delegationService->logDelegatedAction($this->currentUserId, $effectiveUserId, "$this->currentUserId unsubscribed from mailing list: $id on behalf of $effectiveUserId");
+
+		return JsonResponse::success();
+	}
+}

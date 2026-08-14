@@ -1,0 +1,103 @@
+<?xml version="1.0"?>
+<!--
+  - SPDX-FileCopyrightText: 2016-2024 Nextcloud GmbH and Nextcloud contributors
+  - SPDX-FileCopyrightText: 2013-2016 ownCloud, Inc.
+  - SPDX-License-Identifier: AGPL-3.0-only
+-->
+<info xmlns:xsi= "http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+	<id>yoomail</id>
+	<name>YooMail</name>
+	<summary>🚀 A high-performance mail app for Nextcloud with realtime delivery</summary>
+	<description><![CDATA[**🚀 YooMail — 高速邮件应用 for Nextcloud**
+
+YooMail 是基于 Nextcloud Mail 的二次开发产品,专注**实时收信**与**秒开阅读**体验。
+
+- **⚡ Realtime 实时收信** — 内置 Workerman + IMAP IDLE 长连接服务,新邮件到达秒级推送,无需手动刷新。
+- **🚀 正文缓存秒开** — 邮件正文首次渲染后持久化缓存,二次打开近乎秒开。
+- **📥 Multiple mail accounts** — Personal and company account? No problem, and a nice unified inbox. Connect any IMAP account.
+- **🔒 Send & receive encrypted mails** — Using the great [Mailvelope](https://mailvelope.com) browser extension.
+- **📬 与 Nextcloud 深度集成** — Contacts、Calendar、Files 联动。
+
+## 基于的版本
+
+本应用基于 Nextcloud Mail **5.10.12** 构建,并针对中国部分邮箱(腾讯企业邮箱/QQ邮箱、网易邮箱等)的特殊文件夹兼容问题做了优化。
+	]]></description>
+	<version>0.1.0</version>
+	<licence>agpl</licence>
+	<author homepage="https://github.com/tigersprite">TigerSprite Team</author>
+	<namespace>YooMail</namespace>
+	<documentation>
+		<user>https://github.com/tigersprite/yoomail#readme</user>
+		<admin>https://github.com/tigersprite/yoomail#readme</admin>
+		<developer>https://github.com/tigersprite/yoomail/blob/main/README.md</developer>
+	</documentation>
+	<category>social</category>
+	<category>office</category>
+	<website>https://github.com/tigersprite/yoomail#readme</website>
+	<bugs>https://github.com/tigersprite/yoomail/issues</bugs>
+	<repository type="git">https://github.com/nextcloud/mail.git</repository>
+	<screenshot>https://user-images.githubusercontent.com/12728974/266270227-86b99bbb-03ea-468b-8408-e248e1730bed.png</screenshot>
+	<dependencies>
+		<php min-version="8.1" max-version="8.5" />
+		<nextcloud min-version="32" max-version="35" />
+	</dependencies>
+	<background-jobs>
+		<job>OCA\YooMail\BackgroundJob\CleanupJob</job>
+		<job>OCA\YooMail\BackgroundJob\ContextChat\SubmitContentJob</job>
+		<job>OCA\YooMail\BackgroundJob\OutboxWorkerJob</job>
+		<job>OCA\YooMail\BackgroundJob\IMipMessageJob</job>
+		<job>OCA\YooMail\BackgroundJob\DraftsJob</job>
+		<job>OCA\YooMail\BackgroundJob\TrashRetentionJob</job>
+		<job>OCA\YooMail\BackgroundJob\WakeJob</job>
+	</background-jobs>
+	<repair-steps>
+		<post-migration>
+			<step>OCA\YooMail\Migration\AddMissingDefaultTags</step>
+			<step>OCA\YooMail\Migration\AddMissingMessageIds</step>
+			<step>OCA\YooMail\Migration\FixCollectedAddresses</step>
+			<step>OCA\YooMail\Migration\FixBackgroundJobs</step>
+			<step>OCA\YooMail\Migration\MakeItineraryExtractorExecutable</step>
+			<step>OCA\YooMail\Migration\ProvisionAccounts</step>
+			<step>OCA\YooMail\Migration\RepairMailTheads</step>
+			<step>OCA\YooMail\Migration\DeleteDuplicateUids</step>
+		</post-migration>
+	</repair-steps>
+	<commands>
+		<command>OCA\YooMail\Command\AddMissingTags</command>
+		<command>OCA\YooMail\Command\CleanUp</command>
+		<command>OCA\YooMail\Command\CreateAccount</command>
+		<command>OCA\YooMail\Command\ClearMailboxCache</command>
+		<command>OCA\YooMail\Command\CreateTagMigrationJobEntry</command>
+		<command>OCA\YooMail\Command\DebugAccount</command>
+		<command>OCA\YooMail\Command\DeleteAccount</command>
+		<command>OCA\YooMail\Command\DiagnoseAccount</command>
+		<command>OCA\YooMail\Command\ExportAccount</command>
+		<command>OCA\YooMail\Command\ExportAccountThreads</command>
+		<command>OCA\YooMail\Command\InspectMailbox</command>
+		<command>OCA\YooMail\Command\ListMailboxes</command>
+		<command>OCA\YooMail\Command\PredictImportance</command>
+		<command>OCA\YooMail\Command\SyncAccount</command>
+		<command>OCA\YooMail\Command\Thread</command>
+		<command>OCA\YooMail\Command\TrainAccount</command>
+		<command>OCA\YooMail\Command\UpdateAccount</command>
+		<command>OCA\YooMail\Command\UnlockMailbox</command>
+		<command>OCA\YooMail\Command\UpdateSystemAutoresponders</command>
+		<command>OCA\YooMail\Command\RunMetaEstimator</command>
+	</commands>
+	<settings>
+		<admin>OCA\YooMail\Settings\AdminSettings</admin>
+	</settings>
+	<!-- YooMail is a secondary development (fork) of the Nextcloud Mail app.
+	     This records the upstream version this build is based on. -->
+	<base-app-id>mail</base-app-id>
+	<base-app-version>5.10.12</base-app-version>
+	<navigations>
+		<navigation>
+			<name>YooMail</name>
+			<route>yoomail.page.index</route>
+			<icon>yoomail.svg</icon>
+			<order>3</order>
+		</navigation>
+	</navigations>
+</info>

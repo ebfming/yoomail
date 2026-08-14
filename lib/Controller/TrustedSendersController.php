@@ -1,0 +1,96 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * SPDX-FileCopyrightText: 2020 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace OCA\YooMail\Controller;
+
+use OCA\YooMail\AppInfo\Application;
+use OCA\YooMail\Contracts\ITrustedSenderService;
+use OCA\YooMail\Http\JsonResponse;
+use OCA\YooMail\Http\TrapError;
+use OCP\AppFramework\Controller;
+use OCP\AppFramework\Http;
+use OCP\AppFramework\Http\Attribute\OpenAPI;
+use OCP\IRequest;
+
+#[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
+class TrustedSendersController extends Controller {
+	private ?string $uid;
+	private ITrustedSenderService $trustedSenderService;
+
+	public function __construct(IRequest $request,
+		?string $userId,
+		ITrustedSenderService $trustedSenderService) {
+		parent::__construct(Application::APP_ID, $request);
+
+		$this->uid = $userId;
+		$this->trustedSenderService = $trustedSenderService;
+	}
+
+	/**
+	 * @NoAdminRequired
+	 *
+	 * @param string $email
+	 * @param string $type
+	 * @return JsonResponse
+	 */
+	#[TrapError]
+	public function setTrusted(string $email, string $type): JsonResponse {
+		if ($this->uid === null) {
+			return JsonResponse::fail([], Http::STATUS_UNAUTHORIZED);
+		}
+
+		$this->trustedSenderService->trust(
+			$this->uid,
+			$email,
+			$type
+		);
+
+		return JsonResponse::success(null, Http::STATUS_CREATED);
+	}
+
+	/**
+	 * @NoAdminRequired
+	 *
+	 * @param string $email
+	 * @param string $type
+	 * @return JsonResponse
+	 */
+	#[TrapError]
+	public function removeTrust(string $email, string $type): JsonResponse {
+		if ($this->uid === null) {
+			return JsonResponse::fail([], Http::STATUS_UNAUTHORIZED);
+		}
+
+		$this->trustedSenderService->trust(
+			$this->uid,
+			$email,
+			$type,
+			false
+		);
+
+		return JsonResponse::success(null);
+	}
+	/**
+	 * @NoAdminRequired
+	 *
+	 * @return JsonResponse
+	 */
+	#[TrapError]
+	public function list(): JsonResponse {
+		if ($this->uid === null) {
+			return JsonResponse::fail([], Http::STATUS_UNAUTHORIZED);
+		}
+
+		$list = $this->trustedSenderService->getTrusted(
+			$this->uid
+		);
+
+		return JsonResponse::success($list);
+	}
+}

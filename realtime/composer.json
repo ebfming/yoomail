@@ -1,0 +1,17 @@
+{
+    "name": "tigersprite/yoomail-realtime",
+    "description": "Realtime mail notification service for Nextcloud YooMail",
+    "type": "project",
+    "require": {
+        "workerman/workerman": "^5.2",
+        "workerman/channel": "^1.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "OCA\\YooMailRealtime\\": "lib/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
