@@ -24,6 +24,7 @@ YooMail 是基于 Nextcloud Mail 的二次开发产品,专注**实时收信**与
 本应用基于 Nextcloud Mail **5.10.12** 构建,并针对中国部分邮箱(腾讯企业邮箱/QQ邮箱、网易邮箱等)的特殊文件夹兼容问题做了优化。
 	]]></description>
 	<version>0.1.0</version>
+	<internal-version>b-2026.08.13</internal-version>
 	<licence>agpl</licence>
 	<author homepage="https://github.com/tigersprite">TigerSprite Team</author>
 	<namespace>YooMail</namespace>

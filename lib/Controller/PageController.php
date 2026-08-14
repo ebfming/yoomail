@@ -49,8 +49,11 @@ use OCP\User\IAvailabilityCoordinator;
 use Psr\Log\LoggerInterface;
 use Throwable;
 use function class_exists;
+use function dirname;
 use function http_build_query;
+use function is_file;
 use function json_decode;
+use function simplexml_load_file;
 
 #[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
 class PageController extends Controller {
@@ -160,9 +163,17 @@ class PageController extends Controller {
 			$this->config->getSystemValue('version', '0.0.0')
 		);
 
+		$appInfoVersions = $this->readAppInfoVersions();
+
 		$this->initialStateService->provideInitialState(
 			'mailVersion',
-			$this->appManager->getAppVersion('yoomail'),
+			$appInfoVersions['internal-version']
+				?? $appInfoVersions['base-app-version']
+				?? $this->appManager->getAppVersion('yoomail'),
+		);
+		$this->initialStateService->provideInitialState(
+			'internalVersion',
+			$appInfoVersions['internal-version'] ?? '',
 		);
 
 		// Provide the user's configured timezone so the frontend can display
@@ -266,6 +277,11 @@ class PageController extends Controller {
 		$this->initialStateService->provideInitialState('preferences', [
 			'attachment-size-limit' => $this->config->getSystemValue('app.mail.attachment-size-limit', 0),
 			'app-version' => $this->config->getAppValue('yoomail', 'installed_version'),
+			'config-installed-version' => $this->config->getAppValue('yoomail', 'installed_version'),
+			'internal-version' => $appInfoVersions['internal-version'],
+			'config-internal-version' => $appInfoVersions['internal-version'],
+			'base-app-version' => $appInfoVersions['base-app-version'],
+			'config-base-app-version' => $appInfoVersions['base-app-version'],
 			'external-avatars' => $this->preferences->getPreference($this->currentUserId, 'external-avatars', 'true'),
 			'layout-mode' => $this->preferences->getPreference($this->currentUserId, 'layout-mode', 'vertical-split'),
 			'layout-message-view' => $this->preferences->getPreference($this->currentUserId, 'layout-message-view', $this->config->getAppValue('yoomail', 'layout_message_view', 'threaded')),
@@ -528,5 +544,36 @@ class PageController extends Controller {
 	 */
 	public function mailto(): TemplateResponse {
 		return $this->index();
+	}
+
+	/**
+	 * @return array{base-app-version:?string, internal-version:?string}
+	 */
+	private function readAppInfoVersions(): array {
+		$defaults = [
+			'base-app-version' => null,
+			'internal-version' => null,
+		];
+
+		$infoXmlPath = dirname(__DIR__, 2) . '/appinfo/info.xml';
+		if (!is_file($infoXmlPath)) {
+			return $defaults;
+		}
+
+		// Nextcloud disables external entity loading (libxml_set_external_entity_loader),
+		// which breaks simplexml_load_file(). Use the app InfoParser instead.
+		try {
+			$parser = new \OC\App\InfoParser();
+			$info = $parser->parse($infoXmlPath);
+			if ($info === null) {
+				return $defaults;
+			}
+			return [
+				'base-app-version' => $info['base-app-version'] ?? null,
+				'internal-version' => $info['internal-version'] ?? null,
+			];
+		} catch (\Throwable $e) {
+			return $defaults;
+		}
 	}
 }

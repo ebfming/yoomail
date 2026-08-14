@@ -113,6 +113,18 @@ yoomail/
 
 > 后续后台设置页可写入 `yoomail/time-format` 用户偏好(`'24'` 或 `'12'`)即可切换 24/12 小时制,前端自动生效。
 
+### 4.6 关于页版本显示
+
+邮件设置 → 关于 页显示完整的版本信息 `YooMail {version} ({internal-version})`,例如 `YooMail 0.1.0 (b-2026.08.13)`。
+
+| 文件 | 改动 |
+|------|------|
+| `src/components/AppSettingsMenu.vue` | 关于节新增 `<p class="about-version">{{ versionText }}</p>`;新增 computed `versionText`(内部版本存在时显示 `YooMail {version} ({internal-version})`,否则 `YooMail {version}`);新增非 scoped 样式隐藏 `NcAppSettingsDialog` 自带 footer(默认重复显示 `YooMail 5.10.12`,`#app-settings-dialog [class*="appSettingsDialogVersion"] { display: none }`) |
+| `src/init.js` | 存储 `mailVersion`(正式版本 `preferences['app-version']`)与 `internalVersion`(`internal-version` initial state)偏好 |
+| `lib/Controller/PageController.php` | 通过 initial state 提供 `internalVersion`(`info.xml` 的 `internal-version`) |
+
+> **后端解析 `info.xml` 必须用 `OC\App\InfoParser`**,不能用 `simplexml_load_file` —— Nextcloud 在 `lib/base.php` 调用了 `libxml_set_external_entity_loader()`,会导致 web 环境下 `simplexml_load_file` 返回空,`internal-version` 读不到。
+
 ## 5. 前端构建
 
 前端是 Vue 项目。修改 `src/` 下的代码后需要重新构建:
@@ -140,6 +152,7 @@ nginx 需为 WebSocket 增加 `/yoomail-ws` 反代(见 `realtime/deploy/nginx-yo
 
 ## 6. 发布
 
-- 版本号遵循 [SemVer](https://semver.org/),与 `appinfo/info.xml` 和 `CHANGELOG.md` 一致
+- 版本号遵循 [SemVer](https://semver.org/),与 `appinfo/info.xml` 的 `<version>` 和 `CHANGELOG.md` 一致
+- **内部版本号也要同步更新**:`appinfo/info.xml` 的 `<internal-version>`(形如 `b-2026.08.13`)每次发版必须同步递增,与 `<version>` 一同修改;它用于区分 YooMail 自有发布周期与上游 base 版本
 - 发布前确保 `l10n/` 翻译文件已更新(`npm run build` 会打包 `l10n/*.js`)
 - 发布包排除 `.git`、`node_modules`、调试文件等

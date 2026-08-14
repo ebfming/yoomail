@@ -115,6 +115,18 @@ Global replacements to rename the app:
 
 > A future settings page can write the `yoomail/time-format` user preference (`'24'` or `'12'`) to switch between 24h/12h display; the frontend picks it up automatically.
 
+### 4.6 About-page version display
+
+Mail settings → About shows the full version as `YooMail {version} ({internal-version})`, e.g. `YooMail 0.1.0 (b-2026.08.13)`.
+
+| File | Change |
+|------|--------|
+| `src/components/AppSettingsMenu.vue` | About section got a `<p class="about-version">{{ versionText }}</p>` row; new computed `versionText` (renders `YooMail {version} ({internal-version})` when an internal version exists, else `YooMail {version}`); added a non-scoped style hiding `NcAppSettingsDialog`'s built-in footer (which would otherwise repeat `YooMail 5.10.12`, via `#app-settings-dialog [class*="appSettingsDialogVersion"] { display: none }`) |
+| `src/init.js` | stores `mailVersion` (release version from `preferences['app-version']`) and `internalVersion` (`internal-version` initial state) preferences |
+| `lib/Controller/PageController.php` | provides `internalVersion` (`internal-version` from `info.xml`) via initial state |
+
+> **The backend must parse `info.xml` with `OC\App\InfoParser`, not `simplexml_load_file`** — Nextcloud calls `libxml_set_external_entity_loader()` in `lib/base.php`, which makes `simplexml_load_file` return empty in a web context, so `internal-version` would not be readable.
+
 ## 5. Frontend build
 
 The frontend is a Vue project. After changing code under `src/`, rebuild:
@@ -143,5 +155,6 @@ nginx needs a `/yoomail-ws` reverse proxy for WebSocket (see `realtime/deploy/ng
 ## 6. Releasing
 
 - Version follows [SemVer](https://semver.org/) and must match between `appinfo/info.xml` and `CHANGELOG.md`
+- **The internal version must be bumped too**: update `<internal-version>` in `appinfo/info.xml` (e.g. `b-2026.08.13`) on every release, alongside `<version>`; it distinguishes YooMail's own release cycle from the upstream base version
 - Ensure `l10n/` translations are up to date (`npm run build` bundles `l10n/*.js`)
 - Exclude `.git`, `node_modules`, debug files from the release package
