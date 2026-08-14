@@ -124,7 +124,7 @@ class MailTransmission implements IMailTransmission {
 			$fccHeaders->addHeaderOb(new Horde_Mime_Headers_Addresses('Bcc', $bcc->toHorde()));
 		}
 		if ($localMessage->getSubject() !== null) {
-			$fccHeaders->addHeader('Subject', $localMessage->getSubject());
+			$fccHeaders->addHeaderOb($this->buildSubjectHeader($localMessage->getSubject()));
 		}
 		// The table (oc_local_messages) currently only allows for a single reply to message id
 		// but we already set the 'references' header for an email so we could support multiple references
@@ -379,9 +379,34 @@ class MailTransmission implements IMailTransmission {
 			$headers->addHeaderOb(new Horde_Mime_Headers_Addresses('Bcc', $bcc->toHorde()));
 		}
 		if ($subject !== null) {
-			$headers->addHeader('Subject', $subject);
+			$headers->addHeaderOb($this->buildSubjectHeader($subject));
 		}
 		return $headers;
+	}
+
+	/**
+	 * Build a standards-compliant UTF-8 subject header for all locales.
+	 */
+	private function buildSubjectHeader(string $subject): Horde_Mime_Headers_Subject {
+		return new Horde_Mime_Headers_Subject(null, $this->normalizeUtf8HeaderValue($subject));
+	}
+
+	/**
+	 * Outgoing compose data is expected to be UTF-8, but we defensively
+	 * normalize it so malformed byte sequences do not leak into MIME headers.
+	 */
+	private function normalizeUtf8HeaderValue(string $value): string {
+		$normalized = iconv('UTF-8', 'UTF-8', $value);
+		if ($normalized !== false) {
+			return $normalized;
+		}
+
+		$normalized = iconv('UTF-8', 'UTF-8//IGNORE', $value);
+		if ($normalized !== false) {
+			return $normalized;
+		}
+
+		return $value;
 	}
 
 	#[\Override]

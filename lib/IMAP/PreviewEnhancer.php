@@ -60,7 +60,15 @@ class PreviewEnhancer {
 	 *
 	 * @return Message[]
 	 */
-	public function process(Account $account, Mailbox $mailbox, array $messages, bool $preLoadAvatars = false, ?string $userId = null): array {
+	public function process(
+		Account $account,
+		Mailbox $mailbox,
+		array $messages,
+		bool $preLoadAvatars = false,
+		?string $userId = null,
+		bool $loadAttachmentNames = false,
+		bool $analyzeStructure = true,
+	): array {
 		$needAnalyze = array_reduce($messages, static function (array $carry, Message $message) {
 			if ($message->getStructureAnalyzed()) {
 				// Nothing to do
@@ -69,11 +77,9 @@ class PreviewEnhancer {
 
 			return array_merge($carry, [$message->getUid()]);
 		}, []);
-		$client = $this->clientFactory->getClient($account);
 
-		foreach ($messages as $message) {
-			$attachments = $this->attachmentService->getAttachmentNames($account, $mailbox, $message, $client);
-			$message->setAttachments($attachments);
+		if (!$analyzeStructure) {
+			$needAnalyze = [];
 		}
 
 		if ($preLoadAvatars) {
@@ -92,8 +98,22 @@ class PreviewEnhancer {
 			}
 		}
 
+		if (!$loadAttachmentNames && $needAnalyze === []) {
+			// Nothing requires IMAP access, serve the local snapshot immediately.
+			return $messages;
+		}
+
+		$client = $this->clientFactory->getClient($account);
+
+		if ($loadAttachmentNames) {
+			foreach ($messages as $message) {
+				$attachments = $this->attachmentService->getAttachmentNames($account, $mailbox, $message, $client);
+				$message->setAttachments($attachments);
+			}
+		}
+
 		if ($needAnalyze === []) {
-			// Nothing to enhance
+			$client->logout();
 			return $messages;
 		}
 

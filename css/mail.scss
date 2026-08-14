@@ -239,6 +239,74 @@
 	padding: 3px;
 }
 
+/* Message detail layout tuning */
+#mail-thread-header {
+	padding-bottom: calc(var(--default-grid-baseline) * 1) !important;
+	margin-bottom: 0 !important;
+}
+
+#mail-thread-header::before {
+	border-bottom-width: 1px !important;
+}
+
+#mail-thread-header-fields {
+	width: 0;
+	display: flex;
+	align-items: center;
+	padding-inline-start: calc(var(--default-grid-baseline) * 5) !important;
+	padding-inline-end: calc(var(--default-grid-baseline) * 10) !important;
+	margin-inline-end: 0 !important;
+	margin: calc(var(--default-grid-baseline) * 2) 0 !important;
+}
+
+#mail-thread-header-fields h2 {
+	width: 100%;
+	margin-top: 0 !important;
+	padding-bottom: calc(var(--default-grid-baseline) * 1) !important;
+	font-size: clamp(14px, 2vw, 24px);
+	line-height: 1.2;
+}
+
+#mail-message .envelope {
+	padding-bottom: calc(var(--default-grid-baseline) * 2);
+}
+
+#mail-message .envelope:last-of-type {
+	margin-top: calc(var(--default-grid-baseline) * 5);
+}
+
+#mail-message .envelope--expanded {
+	min-height: 220px;
+}
+
+#mail-message .html-message-body {
+	margin: 2px calc(var(--default-grid-baseline) * 3) 0 calc(var(--default-grid-baseline) * 5);
+	padding: var(--default-grid-baseline) calc(var(--default-grid-baseline) * 3);
+}
+
+#mail-message .reply-buttons {
+	margin: 10px 10px;
+}
+
+@media only screen and (max-width: 600px) {
+	#mail-thread-header-fields {
+		padding-inline-start: calc(var(--default-grid-baseline) * 3) !important;
+		padding-inline-end: calc(var(--default-grid-baseline) * 3) !important;
+	}
+
+	#mail-thread-header-fields h2 {
+		font-size: 20px;
+	}
+
+	#mail-message .envelope--expanded {
+		min-height: 180px;
+	}
+
+	#mail-message .html-message-body {
+		margin-inline: calc(var(--default-grid-baseline) * 2);
+	}
+}
+
 /* autocomplete list */
 .ui-autocomplete .ui-menu-item a.mail-recipient-autocomplete {
 	margin: 0px;
@@ -483,4 +551,18 @@
 	.collapsible > .collapse {
 		z-index: 500;
 	}
+}
+
+/* Keep generic confirmation dialogs from clipping action buttons */
+.nc-generic-dialog .dialog__actions {
+	justify-content: stretch;
+	gap: 12px;
+	min-width: 0;
+	width: 100%;
+}
+
+.nc-generic-dialog .dialog__actions > button {
+	flex: 1 1 0;
+	min-width: 0;
+	margin: 0;
 }

@@ -30,6 +30,8 @@ use OCA\YooMail\Service\Html;
 use OCA\YooMail\Service\PhishingDetection\PhishingDetectionService;
 use OCA\YooMail\Service\SmimeService;
 use OCP\AppFramework\Db\DoesNotExistException;
+use function preg_match;
+use function substr_count;
 use function str_starts_with;
 use function strtolower;
 
@@ -62,6 +64,7 @@ class ImapMessageFetcher {
 	private bool $hasHtmlMessage = false;
 	private string $mailbox;
 	private string $rawReferences = '';
+	private ?string $parsedSubject = null;
 	private string $dispositionNotificationTo = '';
 	private bool $hasDkimSignature = false;
 	private array $phishingDetails = [];
@@ -529,9 +532,14 @@ class ImapMessageFetcher {
 	}
 
 	private function decodeSubject(Horde_Imap_Client_Data_Envelope $envelope): string {
+		$subject = $this->parsedSubject ?? $envelope->subject ?? '';
+		$repairedSubject = $this->repairMojibakeSubject($subject);
+		if ($repairedSubject !== null) {
+			return $repairedSubject;
+		}
+
 		// Try a soft conversion first (some installations, eg: Alpine linux,
 		// have issues with the '//IGNORE' option)
-		$subject = $envelope->subject;
 		$utf8 = iconv('UTF-8', 'UTF-8', $subject);
 		if ($utf8 !== false) {
 			return $utf8;
@@ -544,11 +552,57 @@ class ImapMessageFetcher {
 		return $utf8Ignored;
 	}
 
+	private function repairMojibakeSubject(string $subject): ?string {
+		if ($subject === '' || !$this->looksLikeMojibake($subject)) {
+			return null;
+		}
+
+		foreach (['ISO-8859-1', 'Windows-1252'] as $targetEncoding) {
+			$candidate = @iconv('UTF-8', $targetEncoding . '//IGNORE', $subject);
+			if ($candidate === false || $candidate === '' || !$this->isValidUtf8($candidate)) {
+				continue;
+			}
+
+			if ($this->looksLikeMojibake($candidate)
+				&& $this->countMojibakeMarkers($candidate) >= $this->countMojibakeMarkers($subject)
+			) {
+				continue;
+			}
+
+			return $candidate;
+		}
+
+		return null;
+	}
+
+	private function looksLikeMojibake(string $subject): bool {
+		return preg_match('/[ÃÂÐÑæøå]/u', $subject) === 1;
+	}
+
+	private function countMojibakeMarkers(string $subject): int {
+		return substr_count($subject, 'Ã')
+			+ substr_count($subject, 'Â')
+			+ substr_count($subject, 'Ð')
+			+ substr_count($subject, 'Ñ')
+			+ substr_count($subject, 'æ')
+			+ substr_count($subject, 'ø')
+			+ substr_count($subject, 'å');
+	}
+
+	private function isValidUtf8(string $value): bool {
+		return preg_match('//u', $value) === 1;
+	}
+
 	private function parseHeaders(Horde_Imap_Client_Data_Fetch $fetch): void {
 		/** @var resource $headersStream */
 		$headersStream = $fetch->getHeaderText('0', Horde_Imap_Client_Data_Fetch::HEADER_STREAM);
 		$parsedHeaders = Horde_Mime_Headers::parseHeaders($headersStream);
 		fclose($headersStream);
+
+		$subject = $parsedHeaders->getHeader('subject');
+		if ($subject !== null && is_string($subject->value_single) && $subject->value_single !== '') {
+			$this->parsedSubject = $subject->value_single;
+		}
 
 		$references = $parsedHeaders->getHeader('references');
 		if ($references !== null) {

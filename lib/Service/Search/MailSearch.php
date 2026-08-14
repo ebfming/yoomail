@@ -66,7 +66,11 @@ class MailSearch implements IMailSearch {
 		$processed = $this->previewEnhancer->process(
 			$account,
 			$mailbox,
-			[$message]
+			[$message],
+			false,
+			null,
+			true,
+			true
 		);
 		if ($processed === []) {
 			throw new DoesNotExistException('Message does not exist');
@@ -139,7 +143,9 @@ class MailSearch implements IMailSearch {
 				$sortOrder,
 			),
 			true,
-			$userId
+			$userId,
+			false,
+			false
 		);
 	}
 

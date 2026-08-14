@@ -682,17 +682,30 @@ class MessagesController extends Controller {
 
 			$html = $cacheInstance->get($imapMessageCacheKey);
 			if ($html === null) {
-				$client = $this->clientFactory->getClient($account);
-				try {
-					$html = $this->mailManager->getImapMessage(
-						$client,
-						$account,
-						$mailbox,
-						$message->getUid(),
-						true
-					)->getHtmlBody($id);
-				} finally {
-					$client->logout();
+				// Reuse the persistent body cache created by getBody() so opening
+				// a message does not trigger a second IMAP round-trip just to
+				// render the HTML response.
+				$cachedBody = $this->bodyStorage->get($account->getId(), $mailbox->getId(), $id);
+				if (is_array($cachedBody)
+					&& ($cachedBody['hasHtmlBody'] ?? false) === true
+					&& is_string($cachedBody['body'] ?? null)
+				) {
+					$html = $cachedBody['body'];
+					$cacheInstance->set($imapMessageCacheKey, $html, 600);
+				} else {
+					$client = $this->clientFactory->getClient($account);
+					try {
+						$html = $this->mailManager->getImapMessage(
+							$client,
+							$account,
+							$mailbox,
+							$message->getUid(),
+							true
+						)->getHtmlBody($id);
+						$cacheInstance->set($imapMessageCacheKey, $html, 600);
+					} finally {
+						$client->logout();
+					}
 				}
 			}
 
