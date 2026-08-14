@@ -54,7 +54,9 @@ use OCP\IRequest;
 use OCP\IURLGenerator;
 use OCP\Lock\LockedException;
 use Psr\Log\LoggerInterface;
+use Throwable;
 use function array_map;
+use function str_contains;
 
 #[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
 class MessagesController extends Controller {
@@ -256,12 +258,19 @@ class MessagesController extends Controller {
 
 		$client = $this->clientFactory->getClient($account);
 		try {
-			$imapMessage = $this->mailManager->getImapMessage(
-				$client,
-				$account,
-				$mailbox,
-				$message->getUid(), true
-			);
+			try {
+				$imapMessage = $this->mailManager->getImapMessage(
+					$client,
+					$account,
+					$mailbox,
+					$message->getUid(), true
+				);
+			} catch (ServiceException $e) {
+				if ($e->getPrevious() instanceof DoesNotExistException) {
+					return new JSONResponse([], Http::STATUS_NOT_FOUND);
+				}
+				throw $e;
+			}
 
 			if ($imapMessage->hasHtmlMessage()) {
 				$cacheInstance->set($imapMessageCacheKey, $imapMessage->getHtmlBody($id), 600);
@@ -1018,18 +1027,48 @@ class MessagesController extends Controller {
 			$mailbox = $this->mailManager->getMailbox($effectiveUserId, $message->getMailboxId());
 			$account = $this->accountService->find($effectiveUserId, $mailbox->getAccountId());
 		} catch (DoesNotExistException $e) {
-			return new JSONResponse([], Http::STATUS_FORBIDDEN);
+			return \OCA\YooMail\Http\JsonResponse::success([
+				'missing' => true,
+				'message' => 'This email has already been deleted.',
+			]);
 		}
 
 		$this->logger->debug("deleting message <$id>");
 
-		$this->mailManager->deleteMessage(
-			$account,
-			$mailbox->getName(),
-			$message->getUid()
-		);
+		try {
+			$this->mailManager->deleteMessage(
+				$account,
+				$mailbox->getName(),
+				$message->getUid()
+			);
+		} catch (Throwable $e) {
+			if ($this->isMissingDeleteException($e)) {
+				$this->logger->info("message <$id> was already deleted remotely");
+				return \OCA\YooMail\Http\JsonResponse::success([
+					'missing' => true,
+					'message' => 'This email has already been deleted.',
+				]);
+			}
+
+			throw $e;
+		}
 		$this->delegationService->logDelegatedAction($this->currentUserId, $effectiveUserId, "$this->currentUserId deleted message <$id> on behalf of $effectiveUserId");
 		return new JSONResponse();
+	}
+
+	private function isMissingDeleteException(Throwable $throwable): bool {
+		for ($current = $throwable; $current !== null; $current = $current->getPrevious()) {
+			if ($current instanceof DoesNotExistException) {
+				return true;
+			}
+
+			$message = $current->getMessage();
+			if (str_contains($message, 'does not exist')) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

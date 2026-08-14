@@ -46,8 +46,9 @@ use OCP\Security\ICrypto;
 use Psr\Log\LoggerInterface;
 
 try {
-    // Ensure the Mail app is loaded so its classes are resolvable
-    \OC_App::loadApp('mail');
+    // Ensure YooMail itself is loaded so its services/classes are resolvable
+    // even when the upstream `mail` app is not enabled side-by-side.
+    \OC_App::loadApp('yoomail');
 
     $server = \OC::$server;
 
@@ -79,8 +80,8 @@ try {
         $realtimeSyncService,
         $registry,
         $logger,
-        $config->getSystemValueInt('mail.realtime.idle_max_accounts', 200),
-        $config->getSystemValueInt('mail.realtime.idle_refresh_seconds', 1500),
+        (int)$config->getAppValue('yoomail', 'realtime_idle_max_accounts', '200'),
+        (int)$config->getAppValue('yoomail', 'realtime_idle_refresh_seconds', '1500'),
     );
 
     $realtimeServer = new RealtimeServer(

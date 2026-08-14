@@ -11,6 +11,7 @@ namespace OCA\YooMail\Service;
 
 use OC\Files\Node\NonExistingFile;
 use OCP\Files\IRootFolder;
+use Psr\Log\LoggerInterface;
 
 /**
  * Persists rendered message bodies into the Nextcloud data directory so that
@@ -27,7 +28,9 @@ use OCP\Files\IRootFolder;
 class MessageBodyStorage {
 	private string $baseDir;
 
-	public function __construct() {
+	public function __construct(
+		private LoggerInterface $logger,
+	) {
 		// e.g. /web/nextcloud/data/appdata_<instanceid>/mail
 		$dataDir = rtrim(\OC::$server->getConfig()->getSystemValueString('datadirectory', '/web/nextcloud/data'), '/');
 		$instanceId = \OC::$server->getConfig()->getSystemValueString('instanceid', '');
@@ -51,8 +54,16 @@ class MessageBodyStorage {
 		if (!is_dir($dir) && !@mkdir($dir, 0770, true)) {
 			return;
 		}
-		$content = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		$content = json_encode(
+			$body,
+			JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+		);
 		if ($content === false) {
+			$this->logger->warning('yoomail: failed to persist message body cache', [
+				'accountId' => $accountId,
+				'mailboxId' => $mailboxId,
+				'messageId' => $messageId,
+			]);
 			return;
 		}
 		$tmp = $dir . '/' . $messageId . '.tmp';

@@ -64,6 +64,9 @@ class ImapIdleManager
                 continue;
             }
             $accounts[] = new Account($mailAccount);
+            if (count($accounts) >= $this->maxAccounts) {
+                break;
+            }
         }
         return $accounts;
     }
@@ -74,17 +77,9 @@ class ImapIdleManager
      */
     public function listenForAccount(int $index): void
     {
-        $accounts = $this->collectAccounts();
-        if (!isset($accounts[$index])) {
-            $this->logger->info("yoomail-realtime: no account at index $index, worker idle");
-            // Keep the process alive without doing anything
-            while (true) {
-                \sleep(3600);
-            }
-        }
-
-        $account = $accounts[$index];
-        $this->startAccountListener($account);
+        throw new \LogicException(
+            'Legacy ImapIdleManager::listenForAccount() is disabled. Use RealtimeServer + ImapIdleChild instead.'
+        );
     }
 
     /**
@@ -93,16 +88,9 @@ class ImapIdleManager
      */
     public function listenAll(): void
     {
-        $this->running = true;
-        $accounts = $this->collectAccounts();
-        $this->logger->info("yoomail-realtime: listening for " . count($accounts) . " accounts");
-
-        foreach ($accounts as $account) {
-            if (!$this->running) {
-                break;
-            }
-            $this->startAccountListener($account);
-        }
+        throw new \LogicException(
+            'Legacy ImapIdleManager::listenAll() is disabled. Use RealtimeServer + ImapIdleChild instead.'
+        );
     }
 
     public function stop(): void

@@ -62,7 +62,7 @@ class RealtimeServer
         }
 
         if (!class_exists(Worker::class)) {
-            $this->logger->error('yooyoomail-realtime: Workerman is not installed');
+            $this->logger->error('yoomail-realtime: Workerman is not installed');
             return;
         }
         if (PHP_SAPI !== 'cli') {
@@ -122,7 +122,7 @@ class RealtimeServer
         // --- IDLE workers: one per account ---
         $accounts = $this->idleManager->collectAccounts();
         $accountCount = count($accounts);
-        $this->logger->info("yooyoomail-realtime: starting {$accountCount} IDLE worker(s)");
+        $this->logger->info("yoomail-realtime: starting {$accountCount} IDLE worker(s)");
 
         if ($accountCount > 0) {
             $idleWorker = new Worker();
@@ -212,7 +212,7 @@ class RealtimeServer
         $userId = (string)($payload['userId'] ?? '');
         $accountId = (int)($payload['accountId'] ?? 0);
         $mailboxId = isset($payload['mailboxId']) ? (int)$payload['mailboxId'] : null;
-        $this->logger->info("yooyoomail-realtime: channel $type user=$userId account=$accountId mailbox=" . var_export($mailboxId, true));
+        $this->logger->info("yoomail-realtime: channel $type user=$userId account=$accountId mailbox=" . var_export($mailboxId, true));
         $this->registry->pushToUser($userId, [
             'type' => $type,
             'accountId' => $accountId,

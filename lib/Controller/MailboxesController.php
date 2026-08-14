@@ -16,6 +16,7 @@ use OCA\YooMail\Contracts\IMailManager;
 use OCA\YooMail\Contracts\IMailSearch;
 use OCA\YooMail\Exception\ClientException;
 use OCA\YooMail\Exception\IncompleteSyncException;
+use OCA\YooMail\Exception\MailboxLockedException;
 use OCA\YooMail\Exception\MailboxNotCachedException;
 use OCA\YooMail\Exception\NotImplemented;
 use OCA\YooMail\Exception\ServiceException;
@@ -195,6 +196,16 @@ class MailboxesController extends Controller {
 				$order,
 				$query
 			);
+		} catch (MailboxLockedException $e) {
+			return \OCA\YooMail\Http\JsonResponse::success([
+				'newMessages' => [],
+				'changedMessages' => [],
+				'vanishedMessages' => [],
+				'stats' => $mailbox->getStats(),
+				'syncing' => true,
+				'message' => '请稍等，上一轮正在收取...',
+				'mailboxId' => $id,
+			]);
 		} catch (MailboxNotCachedException $e) {
 			return new JSONResponse([], Http::STATUS_PRECONDITION_REQUIRED);
 		} catch (IncompleteSyncException $e) {
