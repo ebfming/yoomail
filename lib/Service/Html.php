@@ -33,8 +33,6 @@ use Sabberworm\CSS\Value\CSSString;
 use Sabberworm\CSS\Value\URL;
 use Youthweb\UrlLinker\UrlLinker;
 
-require_once __DIR__ . '/../../vendor/cerdic/css-tidy/class.csstidy.php';
-
 /**
  * @psalm-import-type IMAPAttachment from IMAPMessage
  */
