@@ -49,6 +49,14 @@ class RealtimeController extends Controller {
 			return new JSONResponse(['error' => 'not authenticated'], 401);
 		}
 
+		// Mode switch: in 'http' mode the realtime service is disabled, so
+		// the frontend gets no token and never opens a WebSocket connection
+		// (it falls back to the classic polling logic).
+		$mode = $this->config->getAppValue('yoomail', 'realtime_mode', 'websocket');
+		if ($mode !== 'websocket') {
+			return new JSONResponse(['error' => 'realtime disabled'], 503);
+		}
+
 		$ttl = 60;
 		$expiry = time() + $ttl;
 		$secret = $this->config->getSystemValueString('secret');

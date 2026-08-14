@@ -22,6 +22,7 @@ use OCA\YooMail\Exception\ServiceException;
 use OCA\YooMail\IMAP\PreviewEnhancer;
 use OCA\YooMail\IMAP\Search\Provider as ImapSearchProvider;
 use OCP\AppFramework\Db\DoesNotExistException;
+use Psr\Log\LoggerInterface;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IUser;
 
@@ -41,16 +42,21 @@ class MailSearch implements IMailSearch {
 	/** @var ITimeFactory */
 	private $timeFactory;
 
+	/** @var LoggerInterface */
+	private LoggerInterface $logger;
+
 	public function __construct(FilterStringParser $filterStringParser,
 		ImapSearchProvider $imapSearchProvider,
 		MessageMapper $messageMapper,
 		PreviewEnhancer $previewEnhancer,
-		ITimeFactory $timeFactory) {
+		ITimeFactory $timeFactory,
+		LoggerInterface $logger) {
 		$this->filterStringParser = $filterStringParser;
 		$this->imapSearchProvider = $imapSearchProvider;
 		$this->messageMapper = $messageMapper;
 		$this->previewEnhancer = $previewEnhancer;
 		$this->timeFactory = $timeFactory;
+		$this->logger = $logger;
 	}
 
 	#[\Override]
@@ -92,7 +98,18 @@ class MailSearch implements IMailSearch {
 		?string $userId,
 		?string $view): array {
 		if ($mailbox->hasLocks($this->timeFactory->getTime())) {
-			throw MailboxLockedException::from($mailbox);
+			// Another process is currently syncing this mailbox (e.g. the
+			// realtime background sync). Serving the local snapshot instead of
+			// failing keeps the list instantly readable — the data is only a
+			// few seconds stale and will be refreshed by the next sync.
+			$this->logger->debug("Mailbox {$mailbox->getId()} is locked, serving local snapshot");
+		}
+		// Container mailboxes (selectable=false, e.g. the "Other folders" root
+		// on some providers) never hold messages and never get sync tokens —
+		// serve an empty list instead of failing with 400 so the UI does not
+		// try to initialize a sync for them.
+		if (!$mailbox->getSelectable()) {
+			return [];
 		}
 		if (!$mailbox->isCached()) {
 			throw MailboxNotCachedException::from($mailbox);

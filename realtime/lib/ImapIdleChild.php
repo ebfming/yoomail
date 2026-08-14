@@ -10,18 +10,24 @@ use Psr\Log\LoggerInterface;
 /**
  * Runs in a forked child process. It owns one blocking IMAP IDLE connection
  * for one account's INBOX. When a change is detected it:
- *   1. performs the actual sync (reusing the standard Mail sync services),
- *   2. reports the change to the master process via the IPC TCP port.
+ *   1. immediately notifies the browser (signal A: mailbox-changed),
+ *   2. kicks off the actual mailbox sync in the background — a separate
+ *      `occ yoomail:account:sync --mailbox=<id> --notify-ipc=<ipc>` process
+ *      that writes the new messages into the local DB and then reports
+ *      "sync-done" (signal B) itself, so the IDLE loop is never blocked.
  */
 class ImapIdleChild
 {
     private bool $stopped = false;
 
+    /** @var array<int, resource> */
+    private array $procs = [];
+
     public function __construct(
         private Account $account,
+        private int $mailboxId,
         private string $ipcHost,
         private int $ipcPort,
-        private RealtimeSyncService $syncService,
         private LoggerInterface $logger,
         private int $idleRefreshSeconds = 1500,
         private int $maxRetries = 10,
@@ -36,6 +42,7 @@ class ImapIdleChild
 
         $retry = 0;
         while (!$this->stopped) {
+            $this->reapChildren();
             $client = null;
             try {
                 $client = new ImapIdleClient(
@@ -90,29 +97,81 @@ class ImapIdleChild
         $this->stopped = true;
     }
 
+    /**
+     * Signal A + background sync. Never blocks the IDLE loop.
+     */
     private function handleChange(): void
     {
         $accountId = $this->account->getId();
         $userId = $this->account->getUserId();
 
-        // 1. Sync using the standard pipeline (inside this child process)
-        $ok = $this->syncService->syncAccount($this->account, false);
-
-        // 2. Report to the master process so it can push to WebSocket clients
-        $payload = json_encode([
+        // 1. Immediately tell the browser that the mailbox changed (signal A).
+        //    The frontend must NOT start an IMAP sync on this signal — the
+        //    data is not in the local DB yet; it waits for signal B instead.
+        $this->reportToMaster([
             'type' => 'mailbox-changed',
             'userId' => $userId,
             'accountId' => $accountId,
-            'sync' => $ok ? 'ok' : 'fail',
+            'mailboxId' => $this->mailboxId,
+            'sync' => 'started',
             'timestamp' => time(),
         ]);
 
-        $this->reportToMaster($payload);
-
-        $this->logger->info("yoomail-realtime: [child] reported account $accountId change (sync=" . ($ok ? 'ok' : 'fail') . ")");
+        // 2. Run the sync in a detached background process. The occ command
+        //    sends the "sync-done" signal (B) to the IPC worker itself once
+        //    it finished, so we don't have to wait for it here.
+        $this->forkBackgroundSync();
     }
 
-    private function reportToMaster(string $payload): void
+    /**
+     * Start `occ yoomail:account:sync --mailbox=... --notify-ipc=...` without
+     * blocking. stdout/stderr go to /dev/null so the pipes can never fill up.
+     */
+    private function forkBackgroundSync(): void
+    {
+        $occPath = \OC::$SERVERROOT . '/occ';
+        $cmd = [
+            PHP_BINARY,
+            $occPath,
+            'yoomail:account:sync',
+            (string)$this->account->getId(),
+            '--mailbox=' . $this->mailboxId,
+            '--notify-ipc=' . $this->ipcHost . ':' . $this->ipcPort,
+        ];
+        $cmdStr = implode(' ', array_map('escapeshellarg', $cmd));
+
+        $descriptorSpec = [
+            0 => ['pipe', 'r'],
+            1 => ['file', '/dev/null', 'w'],
+            2 => ['file', '/dev/null', 'w'],
+        ];
+
+        $proc = @proc_open($cmdStr, $descriptorSpec, $pipes);
+        if (!is_resource($proc)) {
+            $this->logger->warning("yoomail-realtime: [child] failed to fork background sync for account {$this->account->getId()}");
+            return;
+        }
+        fclose($pipes[0]);
+        $this->procs[] = $proc;
+        $this->logger->info("yoomail-realtime: [child] forked background sync for account {$this->account->getId()} mailbox {$this->mailboxId}");
+    }
+
+    /**
+     * Reap finished occ sub-processes so no zombie processes / leaked
+     * proc handles accumulate in this long-running worker.
+     */
+    private function reapChildren(): void
+    {
+        foreach ($this->procs as $i => $proc) {
+            $status = proc_get_status($proc);
+            if ($status === false || !$status['running']) {
+                proc_close($proc);
+                unset($this->procs[$i]);
+            }
+        }
+    }
+
+    private function reportToMaster(array $payload): void
     {
         $fp = @stream_socket_client(
             "tcp://{$this->ipcHost}:{$this->ipcPort}",
@@ -125,7 +184,7 @@ class ImapIdleChild
             $this->logger->warning("yoomail-realtime: [child] IPC connect failed: $errstr");
             return;
         }
-        fwrite($fp, $payload . "\n");
+        fwrite($fp, json_encode($payload) . "\n");
         fclose($fp);
     }
 

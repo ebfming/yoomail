@@ -22,8 +22,11 @@ use Workerman\Worker;
  *  - mail-idle    : one worker per Mail account, running a blocking IMAP IDLE
  *
  * Flow:
- *   IDLE worker detects change -> syncs -> sends signal to IPC worker
- *   IPC worker publishes 'mailbox-changed' on the channel
+ *   IDLE worker detects change -> sends signal A ('mailbox-changed') to the
+ *     IPC worker immediately, then forks a background occ sync for that
+ *     single INBOX; the occ process reports 'sync-done' (signal B) to the
+ *     IPC worker itself once it finished.
+ *   IPC worker publishes both events on the channel
  *   WS worker (subscribed to the channel) pushes to online clients
  */
 class RealtimeServer
@@ -48,6 +51,15 @@ class RealtimeServer
             return;
         }
         $this->started = true;
+
+        // Mode switch: in 'http' mode the realtime service must not run at
+        // all (the frontend polls via classic HTTP sync instead). Defensive
+        // guard in case the systemd unit is started anyway.
+        $mode = $this->config->getAppValue('yoomail', 'realtime_mode', 'websocket');
+        if ($mode !== 'websocket') {
+            $this->logger->info('yoomail-realtime: realtime_mode=http, realtime service disabled');
+            return;
+        }
 
         if (!class_exists(Worker::class)) {
             $this->logger->error('yooyoomail-realtime: Workerman is not installed');
@@ -82,9 +94,11 @@ class RealtimeServer
         $wsWorker->name = 'mail-ws';
         $wsWorker->onWorkerStart = function () use ($channelPort): void {
             ChannelClient::connect(self::CHANNEL_HOST, $channelPort);
-            ChannelClient::on('mailbox-changed', function ($eventData): void {
-                $this->handleChannelEvent($eventData);
-            });
+            foreach (['mailbox-changed', 'sync-done'] as $event) {
+                ChannelClient::on($event, function ($eventData) use ($event): void {
+                    $this->handleChannelEvent($eventData);
+                });
+            }
             echo "[yoomail-realtime] WS worker subscribed to channel\n";
         };
         $wsWorker->onMessage = function ($connection, $data) use ($webSocketHandler): void {
@@ -121,8 +135,9 @@ class RealtimeServer
                         \sleep(3600);
                     }
                 }
-                echo "[yoomail-realtime] IDLE worker id={$index} for account {$accounts[$index]->getId()}\n";
-                $this->startIdleWorker($accounts[$index], $wsHost, $ipcPort);
+                $account = $accounts[$index];
+                echo "[yoomail-realtime] IDLE worker id={$index} for account {$account->getId()}\n";
+                $this->startIdleWorker($account, $ipcPort);
             };
         }
 
@@ -132,17 +147,43 @@ class RealtimeServer
     /**
      * Runs inside an IDLE worker process. Blocks forever.
      */
-    private function startIdleWorker(\OCA\YooMail\Account $account, string $wsHost, int $ipcPort): void
+    private function startIdleWorker(\OCA\YooMail\Account $account, int $ipcPort): void
     {
+        $mailboxId = $this->findInboxMailboxId($account);
+        if ($mailboxId === null) {
+            $this->logger->warning("yoomail-realtime: account {$account->getId()} has no INBOX mailbox, IDLE worker idle");
+            while (true) {
+                \sleep(3600);
+            }
+        }
+
         $child = new ImapIdleChild(
             $account,
-            $wsHost,
+            $mailboxId,
+            self::CHANNEL_HOST,
             $ipcPort,
-            $this->syncService,
             $this->logger,
             (int)$this->config->getAppValue('yoomail', 'realtime_idle_refresh_seconds', '1500'),
         );
         $child->run();
+    }
+
+    /**
+     * Resolve the database id of the account's INBOX mailbox.
+     */
+    private function findInboxMailboxId(\OCA\YooMail\Account $account): ?int
+    {
+        try {
+            $mapper = \OC::$server->get(\OCA\YooMail\Db\MailboxMapper::class);
+            foreach ($mapper->findAll($account) as $mailbox) {
+                if ($mailbox->isInbox()) {
+                    return $mailbox->getId();
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning("yoomail-realtime: could not resolve INBOX for account {$account->getId()}: " . $e->getMessage());
+        }
+        return null;
     }
 
     /**
@@ -156,9 +197,9 @@ class RealtimeServer
             return;
         }
         $type = $payload['type'] ?? '';
-        if ($type === 'mailbox-changed') {
-            ChannelClient::publish('mailbox-changed', $payload);
-            echo "[yoomail-realtime] IPC forwarded mailbox-changed to channel\n";
+        if ($type === 'mailbox-changed' || $type === 'sync-done') {
+            ChannelClient::publish($type, $payload);
+            echo "[yoomail-realtime] IPC forwarded $type to channel\n";
         }
     }
 
@@ -167,13 +208,16 @@ class RealtimeServer
      */
     private function handleChannelEvent(array $payload): void
     {
+        $type = (string)($payload['type'] ?? 'mailbox-changed');
         $userId = (string)($payload['userId'] ?? '');
         $accountId = (int)($payload['accountId'] ?? 0);
-        $this->logger->info("yooyoomail-realtime: channel mailbox-changed user=$userId account=$accountId");
+        $mailboxId = isset($payload['mailboxId']) ? (int)$payload['mailboxId'] : null;
+        $this->logger->info("yooyoomail-realtime: channel $type user=$userId account=$accountId mailbox=" . var_export($mailboxId, true));
         $this->registry->pushToUser($userId, [
-            'type' => 'mailbox-changed',
+            'type' => $type,
             'accountId' => $accountId,
-            'reason' => 'new-message',
+            'mailboxId' => $mailboxId,
+            'sync' => $payload['sync'] ?? null,
             'timestamp' => time(),
         ]);
     }

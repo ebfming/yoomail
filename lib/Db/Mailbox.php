@@ -79,9 +79,15 @@ class Mailbox extends Entity implements JsonSerializable {
 
 	/**
 	 * @var int
-	 *          Lock timeout for sync (5 minutes)
+	 *          Lock timeout for sync (2 minutes)
+	 *
+	 *          Shortened from 5 minutes: a stale lock used to block every
+	 *          list read and IMAP sync for minutes (the "new mail appears
+	 *          after several minutes" symptom). 120s is far above the actual
+	 *          duration of a single-mailbox incremental sync, but bounds the
+	 *          outage when a syncing process dies without unlocking.
 	 */
-	public const LOCK_TIMEOUT = 300;
+	public const LOCK_TIMEOUT = 120;
 
 	public function __construct() {
 		$this->addType('accountId', 'integer');
