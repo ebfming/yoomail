@@ -121,23 +121,26 @@ class RealtimeServer
 
         // --- IDLE workers: one per account ---
         $accounts = $this->idleManager->collectAccounts();
-        $accountCount = count($accounts);
+        $listeners = $this->buildIdleListeners($accounts);
+        $accountCount = count($listeners);
         $this->logger->info("yoomail-realtime: starting {$accountCount} IDLE worker(s)");
 
         if ($accountCount > 0) {
             $idleWorker = new Worker();
             $idleWorker->count = $accountCount;
             $idleWorker->name = 'mail-idle';
-            $idleWorker->onWorkerStart = function (Worker $worker) use ($accounts, $wsHost, $ipcPort): void {
+            $idleWorker->onWorkerStart = function (Worker $worker) use ($listeners, $wsHost, $ipcPort): void {
                 $index = $worker->id;
-                if (!isset($accounts[$index])) {
+                if (!isset($listeners[$index])) {
                     while (true) {
                         \sleep(3600);
                     }
                 }
-                $account = $accounts[$index];
-                echo "[yoomail-realtime] IDLE worker id={$index} for account {$account->getId()}\n";
-                $this->startIdleWorker($account, $ipcPort);
+                $listener = $listeners[$index];
+                $account = $listener['account'];
+                $mailboxId = $listener['mailboxId'];
+                echo "[yoomail-realtime] IDLE worker id={$index} for account {$account->getId()} mailbox {$mailboxId}\n";
+                $this->startIdleWorker($account, $mailboxId, $ipcPort);
             };
         }
 
@@ -147,16 +150,8 @@ class RealtimeServer
     /**
      * Runs inside an IDLE worker process. Blocks forever.
      */
-    private function startIdleWorker(\OCA\YooMail\Account $account, int $ipcPort): void
+    private function startIdleWorker(\OCA\YooMail\Account $account, int $mailboxId, int $ipcPort): void
     {
-        $mailboxId = $this->findInboxMailboxId($account);
-        if ($mailboxId === null) {
-            $this->logger->warning("yoomail-realtime: account {$account->getId()} has no INBOX mailbox, IDLE worker idle");
-            while (true) {
-                \sleep(3600);
-            }
-        }
-
         $child = new ImapIdleChild(
             $account,
             $mailboxId,
@@ -169,6 +164,34 @@ class RealtimeServer
     }
 
     /**
+     * Resolve account/mailbox pairs before Workerman forks child processes.
+     *
+     * Nextcloud's DB connection is not fork-safe in long-running Workerman
+     * children. Keeping this lookup in the parent avoids stale/crossed DB
+     * state such as account/mailbox mismatches after restart.
+     *
+     * @param \OCA\YooMail\Account[] $accounts
+     * @return array<int, array{account: \OCA\YooMail\Account, mailboxId: int}>
+     */
+    private function buildIdleListeners(array $accounts): array
+    {
+        $listeners = [];
+        foreach ($accounts as $account) {
+            $mailboxId = $this->findInboxMailboxId($account);
+            if ($mailboxId === null) {
+                $this->logger->warning("yoomail-realtime: account {$account->getId()} has no INBOX mailbox, skipping IDLE worker");
+                continue;
+            }
+            $listeners[] = [
+                'account' => $account,
+                'mailboxId' => $mailboxId,
+            ];
+            $this->logger->info("yoomail-realtime: configured IDLE account {$account->getId()} mailbox {$mailboxId}");
+        }
+        return $listeners;
+    }
+
+    /**
      * Resolve the database id of the account's INBOX mailbox.
      */
     private function findInboxMailboxId(\OCA\YooMail\Account $account): ?int
@@ -177,6 +200,15 @@ class RealtimeServer
             $mapper = \OC::$server->get(\OCA\YooMail\Db\MailboxMapper::class);
             foreach ($mapper->findAll($account) as $mailbox) {
                 if ($mailbox->isInbox()) {
+                    if ($mailbox->getAccountId() !== $account->getId()) {
+                        $this->logger->warning(sprintf(
+                            'yoomail-realtime: ignored mismatched INBOX mailbox %d for account %d, mailbox belongs to account %d',
+                            $mailbox->getId(),
+                            $account->getId(),
+                            $mailbox->getAccountId()
+                        ));
+                        continue;
+                    }
                     return $mailbox->getId();
                 }
             }

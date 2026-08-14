@@ -20,7 +20,9 @@ class ImapIdleChild
 {
     private bool $stopped = false;
 
-    /** @var array<int, resource> */
+    /**
+     * @var array<int, array{proc: resource, accountId: int, mailboxId: int, startedAt: int, logFile: string}>
+     */
     private array $procs = [];
 
     public function __construct(
@@ -125,7 +127,8 @@ class ImapIdleChild
 
     /**
      * Start `occ yoomail:account:sync --mailbox=... --notify-ipc=...` without
-     * blocking. stdout/stderr go to /dev/null so the pipes can never fill up.
+     * blocking. stdout/stderr are appended to a log file so production failures
+     * do not disappear silently.
      */
     private function forkBackgroundSync(): void
     {
@@ -140,10 +143,11 @@ class ImapIdleChild
         ];
         $cmdStr = implode(' ', array_map('escapeshellarg', $cmd));
 
+        $logFile = $this->getSyncLogFile();
         $descriptorSpec = [
             0 => ['pipe', 'r'],
-            1 => ['file', '/dev/null', 'w'],
-            2 => ['file', '/dev/null', 'w'],
+            1 => ['file', $logFile, 'a'],
+            2 => ['file', $logFile, 'a'],
         ];
 
         $proc = @proc_open($cmdStr, $descriptorSpec, $pipes);
@@ -152,8 +156,14 @@ class ImapIdleChild
             return;
         }
         fclose($pipes[0]);
-        $this->procs[] = $proc;
-        $this->logger->info("yoomail-realtime: [child] forked background sync for account {$this->account->getId()} mailbox {$this->mailboxId}");
+        $this->procs[] = [
+            'proc' => $proc,
+            'accountId' => $this->account->getId(),
+            'mailboxId' => $this->mailboxId,
+            'startedAt' => time(),
+            'logFile' => $logFile,
+        ];
+        $this->logger->info("yoomail-realtime: [child] forked background sync for account {$this->account->getId()} mailbox {$this->mailboxId}, log=$logFile");
     }
 
     /**
@@ -162,10 +172,21 @@ class ImapIdleChild
      */
     private function reapChildren(): void
     {
-        foreach ($this->procs as $i => $proc) {
+        foreach ($this->procs as $i => $entry) {
+            $proc = $entry['proc'];
             $status = proc_get_status($proc);
             if ($status === false || !$status['running']) {
+                $exitCode = is_array($status) ? (int)$status['exitcode'] : -1;
                 proc_close($proc);
+                $duration = time() - (int)$entry['startedAt'];
+                $this->logger->info(sprintf(
+                    'yoomail-realtime: [child] background sync finished account %d mailbox %d exit=%d duration=%ds log=%s',
+                    (int)$entry['accountId'],
+                    (int)$entry['mailboxId'],
+                    $exitCode,
+                    $duration,
+                    (string)$entry['logFile']
+                ));
                 unset($this->procs[$i]);
             }
         }
@@ -191,5 +212,11 @@ class ImapIdleChild
     private function sleep(int $seconds): void
     {
         \sleep($seconds);
+    }
+
+    private function getSyncLogFile(): string
+    {
+        $dataDir = \OC::$server->get(\OCP\IConfig::class)->getSystemValue('datadirectory', \OC::$SERVERROOT . '/data');
+        return rtrim((string)$dataDir, '/') . '/yoomail-realtime-sync.log';
     }
 }

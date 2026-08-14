@@ -98,34 +98,45 @@ final class SyncAccount extends Command {
 		$ok = true;
 		$exitCode = 0;
 
-		if ($mailboxId !== null) {
-			// Single-mailbox sync (used by the realtime service after an
-			// IMAP IDLE wake-up). Skips the (potentially slow) folder-list
-			// sync — only the given mailbox is synchronized.
-			try {
-				$mailbox = $this->mailboxMapper->findById((int)$mailboxId);
-			} catch (DoesNotExistException $e) {
-				$output->writeln("<error>Mailbox $mailboxId does not exist</error>");
+			if ($mailboxId !== null) {
+				// Single-mailbox sync (used by the realtime service after an
+				// IMAP IDLE wake-up). Skips the (potentially slow) folder-list
+				// sync — only the given mailbox is synchronized.
+				try {
+					$mailbox = $this->mailboxMapper->findById((int)$mailboxId);
+				} catch (DoesNotExistException $e) {
+					$output->writeln("<error>Mailbox $mailboxId does not exist</error>");
 
-				return 1;
-			}
+					return 1;
+				}
 
-			try {
-				$this->syncMailbox($account, $mailbox, $force, $output);
-			} catch (\Throwable $e) {
-				$ok = false;
-				$exitCode = 1;
-				$output->writeln('<error>' . $e->getMessage() . '</error>');
+				if ($mailbox->getAccountId() !== $account->getId()) {
+					$ok = false;
+					$exitCode = 1;
+					$output->writeln(sprintf(
+						'<error>Mailbox %d belongs to account %d, not account %d</error>',
+						$mailbox->getId(),
+						$mailbox->getAccountId(),
+						$account->getId()
+					));
+				} else {
+					try {
+						$this->syncMailbox($account, $mailbox, $force, $output);
+					} catch (\Throwable $e) {
+						$ok = false;
+						$exitCode = 1;
+						$output->writeln('<error>' . $e->getMessage() . '</error>');
+					}
+				}
+			} else {
+				try {
+					$this->sync($account, $force, $output);
+				} catch (\Throwable $e) {
+					$ok = false;
+					$exitCode = 1;
+					$output->writeln('<error>' . $e->getMessage() . '</error>');
+				}
 			}
-		} else {
-			try {
-				$this->sync($account, $force, $output);
-			} catch (\Throwable $e) {
-				$ok = false;
-				$exitCode = 1;
-				$output->writeln('<error>' . $e->getMessage() . '</error>');
-			}
-		}
 
 		if ($notifyIpc !== null) {
 			$this->notifyIpc(
