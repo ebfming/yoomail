@@ -12,6 +12,11 @@
 
 - 修复邮箱【订阅】/【取消订阅】操作报 500 的问题:部分邮箱服务器(腾讯企业邮箱/QQ 邮箱等)禁止 IMAP `SUBSCRIBE`/`UNSUBSCRIBE` 命令(实测 `imap.exmail.qq.com` 对所有邮箱的 UNSUBSCRIBE 均返回 `NO Not allow to unsubscribe!`)。现在降级为记录日志并同步邮箱列表后返回当前状态,不再中断请求。
 
+### Changed
+
+- 代码注释、脚本提示统一改为英文;新增多语言词条(同步限流提示走 l10n,`zh_CN.json` 保持原中文文案)。
+- 新增开发规范文档(中英双份):`help/CODE-STANDARDS.md`、`CONTRIBUTING.md`、`SECURITY.md` 及对应 `-zh.md`,README 文档索引同步更新。
+
 ## [0.1.0] - 2026-08-13
 
 ### Added

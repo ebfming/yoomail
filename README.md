@@ -8,7 +8,7 @@
 
 YooMail is a secondary development (fork) of [Nextcloud Mail](https://github.com/nextcloud/mail) 5.10.12, focused on **realtime delivery** and **instant reading** of emails.
 
-> [中文版 README](README-zh.md) · [Changelog](CHANGELOG.md) · [Deployment](help/DEPLOYMENT.md) · [Upstream diff & upgrade notes](help/UPSTREAM-DIFF-AND-UPGRADE.md)
+> [中文版 README](README-zh.md) · [Changelog](CHANGELOG.md) · [Deployment](help/DEPLOYMENT.md) · [Upstream diff & upgrade notes](help/UPSTREAM-DIFF-AND-UPGRADE.md) · [Code standards](help/CODE-STANDARDS.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 ## Highlights
 
