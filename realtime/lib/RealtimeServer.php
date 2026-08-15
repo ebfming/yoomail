@@ -75,9 +75,11 @@ class RealtimeServer
         $ipcPort = (int)$this->config->getAppValue('yoomail', 'realtime_ipc_port', '8790');
         $channelPort = (int)$this->config->getAppValue('yoomail', 'realtime_channel_port', '2207');
 
-        // Workerman 默认把 pid 文件写到 start_file 同目录(realtime/),该目录可能
-        // 不可被 www-data 写入。改写到 Nextcloud data 目录(www-data 可写),
-        // 且使用独立文件名避免与 mail 实时服务的 pid 文件冲突。
+        // Workerman writes its pid file next to the start script (realtime/) by
+        // default, which may not be writable by the www-data user. Write it into
+        // the Nextcloud data directory (writable by www-data) instead, using a
+        // dedicated filename to avoid clashing with the pid file of the upstream
+        // mail realtime service.
         Worker::$pidFile = \OC::$server->get(\OCP\IConfig::class)->getSystemValue('datadirectory', '/web/nextcloud/data')
             . '/yoomail-realtime.pid';
 

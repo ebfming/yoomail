@@ -34,6 +34,7 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IConfig;
 use OCP\IRequest;
+use OCP\IL10N;
 
 #[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
 class MailboxesController extends Controller {
@@ -53,6 +54,7 @@ class MailboxesController extends Controller {
 		private readonly IConfig $config,
 		private readonly ITimeFactory $timeFactory,
 		DelegationService $delegationService,
+		private readonly IL10N $l10n,
 	) {
 		parent::__construct($appName, $request);
 
@@ -203,7 +205,7 @@ class MailboxesController extends Controller {
 				'vanishedMessages' => [],
 				'stats' => $mailbox->getStats(),
 				'syncing' => true,
-				'message' => '请稍等，上一轮正在收取...',
+				'message' => $this->l10n->t('Please wait, the previous sync is still in progress...'),
 				'mailboxId' => $id,
 			]);
 		} catch (MailboxNotCachedException $e) {

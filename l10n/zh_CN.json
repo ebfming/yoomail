@@ -1001,7 +1001,8 @@
             "msgstr": [
                 "刷新邮箱"
             ]
-        }
+        },
+        "Please wait, the previous sync is still in progress...": "请稍等，上一轮正在收取..."
     },
     "pluralForm": "nplurals=1; plural=0;"
 }

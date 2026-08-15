@@ -419,13 +419,15 @@ class MailManager implements IMailManager {
 			$this->mailboxSync->sync($account, $this->logger, true, $client);
 		} catch (Horde_Imap_Client_Exception $e) {
 			/**
-			 * YooMail: 国内部分邮箱(腾讯企业邮箱/QQ 邮箱/网易邮箱等)不支持或
-			 * 禁止 IMAP SUBSCRIBE/UNSUBSCRIBE 命令。实测 imap.exmail.qq.com
-			 * 对任何邮箱的 UNSUBSCRIBE 均返回 "NO Not allow to unsubscribe!",
-			 * 对 INBOX 尤其如此(RFC 3501 规定 INBOX 必须保持订阅)。
+			 * YooMail: some Chinese mail providers (Tencent Exmail/QQ Mail,
+			 * NetEase Mail, etc.) do not support or forbid the IMAP
+			 * SUBSCRIBE/UNSUBSCRIBE commands. In practice imap.exmail.qq.com
+			 * answers "NO Not allow to unsubscribe!" to UNSUBSCRIBE on any
+			 * mailbox, especially INBOX (RFC 3501 mandates that INBOX stays
+			 * subscribed).
 			 *
-			 * 此处降级处理:记录日志后继续,不把订阅失败升级为 500,避免前端
-			 * 订阅/取消订阅操作直接报错。
+			 * Degrade gracefully: log the failure and continue instead of
+			 * turning a subscription toggle into a 500 error.
 			 */
 			$this->logger->warning(
 				"Could not set subscription status for mailbox {$mailbox->getId()} on IMAP: {$e->getMessage()}."
@@ -434,7 +436,8 @@ class MailManager implements IMailManager {
 			);
 
 			/**
-			 * 2b. 仍同步一次邮箱列表,让本地 attributes 反映服务器真实订阅状态
+			 * 2b. Still sync the mailbox list so the local attributes reflect
+			 * the real subscription state on the server.
 			 */
 			try {
 				$this->mailboxSync->sync($account, $this->logger, true, $client);
