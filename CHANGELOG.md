@@ -15,6 +15,7 @@
 ### Changed
 
 - 代码注释、脚本提示统一改为英文;新增多语言词条(同步限流提示走 l10n,`zh_CN.json` 保持原中文文案)。
+- `appinfo/info.xml` 的 `description` 改为英文(应用商店元数据,便于国际发布)。
 - 新增开发规范文档(中英双份):`help/CODE-STANDARDS.md`、`CONTRIBUTING.md`、`SECURITY.md` 及对应 `-zh.md`,README 文档索引同步更新。
 
 ## [0.1.0] - 2026-08-13
