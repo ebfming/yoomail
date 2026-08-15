@@ -1,25 +1,29 @@
+# Rendered from yoomail.service.template by deploy.sh.
+# Do not install this file directly without replacing placeholders.
+
 [Unit]
 Description=YooMail Realtime Service (IMAP IDLE + WebSocket)
 Wants=network-online.target
-After=network-online.target mysql.service php8.5-fpm.service
+After=network-online.target
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
-WorkingDirectory=/web/nextcloud
-ExecStart=/usr/bin/php /web/nextcloud/apps-extra/yoomail/realtime/server.php start
+User=__PHP_USER__
+Group=__PHP_GROUP__
+WorkingDirectory=__NC_ROOT__
+ExecStart=__PHP_BIN__ __NC_ROOT__/apps-extra/yoomail/realtime/server.php start
 # systemd manages the process lifecycle; send SIGTERM to stop Workerman gracefully
 KillSignal=SIGTERM
 KillMode=control-group
 TimeoutStopSec=10
 Restart=always
 RestartSec=5
+# The service only needs write access to Nextcloud data and its own realtime area.
 # Hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ReadWritePaths=/web/nextcloud/data /web/nextcloud/apps-extra/yoomail/realtime
+ReadWritePaths=__NC_ROOT__/data __NC_ROOT__/apps-extra/yoomail/realtime
 
 [Install]
 WantedBy=multi-user.target

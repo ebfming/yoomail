@@ -13,12 +13,15 @@ use Horde_Imap_Client;
 use OCA\YooMail\Account;
 use OCA\YooMail\Db\Mailbox;
 use OCA\YooMail\Db\MailboxMapper;
+use OCA\YooMail\Db\MessageMapper;
 use OCA\YooMail\Exception\IncompleteSyncException;
 use OCA\YooMail\Exception\ServiceException;
 use OCA\YooMail\IMAP\IMAPClientFactory;
 use OCA\YooMail\IMAP\MailboxSync;
+use OCA\YooMail\IMAP\PreviewEnhancer;
 use OCA\YooMail\Service\AccountService;
 use OCA\YooMail\Service\Sync\ImapToDbSynchronizer;
+use OCA\YooMail\Service\Sync\MailboxSyncDelta;
 use OCA\YooMail\Support\ConsoleLoggerDecorator;
 use OCP\AppFramework\Db\DoesNotExistException;
 use Psr\Log\LoggerInterface;
@@ -42,13 +45,17 @@ final class SyncAccount extends Command {
 	private LoggerInterface $logger;
 	private IMAPClientFactory $clientFactory;
 	private MailboxMapper $mailboxMapper;
+	private MessageMapper $messageMapper;
+	private PreviewEnhancer $previewEnhancer;
 
 	public function __construct(AccountService $service,
 		MailboxSync $mailboxSync,
 		ImapToDbSynchronizer $messageSync,
 		LoggerInterface $logger,
 		IMAPClientFactory $clientFactory,
-		MailboxMapper $mailboxMapper) {
+		MailboxMapper $mailboxMapper,
+		MessageMapper $messageMapper,
+		PreviewEnhancer $previewEnhancer) {
 		parent::__construct();
 
 		$this->accountService = $service;
@@ -57,6 +64,8 @@ final class SyncAccount extends Command {
 		$this->logger = $logger;
 		$this->clientFactory = $clientFactory;
 		$this->mailboxMapper = $mailboxMapper;
+		$this->messageMapper = $messageMapper;
+		$this->previewEnhancer = $previewEnhancer;
 	}
 
 	/**
@@ -98,6 +107,7 @@ final class SyncAccount extends Command {
 		$ok = true;
 		$exitCode = 0;
 
+			$realtimePayload = null;
 			if ($mailboxId !== null) {
 				// Single-mailbox sync (used by the realtime service after an
 				// IMAP IDLE wake-up). Skips the (potentially slow) folder-list
@@ -121,7 +131,7 @@ final class SyncAccount extends Command {
 					));
 				} else {
 					try {
-						$this->syncMailbox($account, $mailbox, $force, $output);
+						$realtimePayload = $this->syncMailbox($account, $mailbox, $force, $output);
 					} catch (\Throwable $e) {
 						$ok = false;
 						$exitCode = 1;
@@ -144,7 +154,8 @@ final class SyncAccount extends Command {
 				$accountId,
 				$mailboxId !== null ? (int)$mailboxId : null,
 				$ok,
-				$account->getUserId()
+				$account->getUserId(),
+				$realtimePayload
 			);
 		}
 
@@ -157,11 +168,11 @@ final class SyncAccount extends Command {
 	/**
 	 * Synchronize a single mailbox (realtime fast path).
 	 */
-	private function syncMailbox(Account $account, Mailbox $mailbox, bool $force, OutputInterface $output): void {
+	private function syncMailbox(Account $account, Mailbox $mailbox, bool $force, OutputInterface $output): ?array {
 		$consoleLogger = new ConsoleLoggerDecorator($this->logger, $output);
 		$client = $this->clientFactory->getClient($account);
 		try {
-			$this->syncService->sync(
+			$delta = $this->syncService->syncWithDelta(
 				$account,
 				$client,
 				$mailbox,
@@ -183,6 +194,8 @@ final class SyncAccount extends Command {
 		foreach ($this->clientFactory->getLoginStats() as $host => $count) {
 			$consoleLogger->debug(sprintf('%d IMAP connection(s) to %s', $count, $host));
 		}
+
+		return $this->buildRealtimePayload($account, $mailbox, $delta);
 	}
 
 	private function sync(Account $account, bool $force, OutputInterface $output): void {
@@ -213,15 +226,16 @@ final class SyncAccount extends Command {
 	 * Notify the realtime service (IPC worker) that the sync finished, so it
 	 * can push a "sync-done" signal to online clients.
 	 */
-	private function notifyIpc(string $hostPort, int $accountId, ?int $mailboxId, bool $ok, ?string $userId): void {
-		$payload = json_encode([
+	private function notifyIpc(string $hostPort, int $accountId, ?int $mailboxId, bool $ok, ?string $userId, ?array $realtimePayload = null): void {
+		$payload = json_encode(array_filter([
 			'type' => 'sync-done',
 			'userId' => $userId,
 			'accountId' => $accountId,
 			'mailboxId' => $mailboxId,
 			'sync' => $ok ? 'ok' : 'fail',
 			'timestamp' => time(),
-		]);
+			'realtimePayload' => $realtimePayload,
+		], static fn ($value) => $value !== null));
 
 		$fp = @stream_socket_client(
 			"tcp://$hostPort",
@@ -236,5 +250,48 @@ final class SyncAccount extends Command {
 		}
 		fwrite($fp, $payload . "\n");
 		fclose($fp);
+	}
+
+	private function buildRealtimePayload(Account $account, Mailbox $mailbox, MailboxSyncDelta $delta): ?array {
+		if ($delta->isInitialSync()) {
+			return null;
+		}
+
+		$newMessages = $this->serializeRealtimeMessages($account, $mailbox, $delta->getNewUids());
+		$changedMessages = $this->serializeRealtimeMessages($account, $mailbox, $delta->getChangedUids());
+		$vanishedMessages = $delta->getVanishedIds();
+
+		if ($newMessages === [] && $changedMessages === [] && $vanishedMessages === []) {
+			return null;
+		}
+
+		return [
+			'newMessages' => $newMessages,
+			'changedMessages' => $changedMessages,
+			'vanishedMessages' => $vanishedMessages,
+			'stats' => $mailbox->getStats(),
+		];
+	}
+
+	private function serializeRealtimeMessages(Account $account, Mailbox $mailbox, array $uids): array {
+		if ($uids === []) {
+			return [];
+		}
+
+		$messages = $this->messageMapper->findByUidsForUser(
+			$mailbox,
+			$account->getUserId(),
+			$uids
+		);
+
+		return $this->previewEnhancer->process(
+			$account,
+			$mailbox,
+			$messages,
+			false,
+			null,
+			false,
+			false
+		);
 	}
 }

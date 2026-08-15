@@ -9,8 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\YooMail\Service;
 
-use OC\Files\Node\NonExistingFile;
-use OCP\Files\IRootFolder;
+use OCA\YooMail\Db\Message;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -26,6 +25,9 @@ use Psr\Log\LoggerInterface;
  * resolves the appdata path from the Nextcloud config and manages it directly.
  */
 class MessageBodyStorage {
+	private const CACHE_VERSION = 2;
+	private const MAX_AGE_SECONDS = 2592000;
+
 	private string $baseDir;
 
 	public function __construct(
@@ -46,16 +48,30 @@ class MessageBodyStorage {
 	 *
 	 * @param int $accountId
 	 * @param int $mailboxId
-	 * @param int $messageId database message id
+	 * @param Message $message database message entity
 	 * @param array $body the getBody() response payload
 	 */
-	public function save(int $accountId, int $mailboxId, int $messageId, array $body): void {
+	public function save(int $accountId, int $mailboxId, Message $message, array $body): void {
 		$dir = $this->mailboxDir($accountId, $mailboxId);
 		if (!is_dir($dir) && !@mkdir($dir, 0770, true)) {
 			return;
 		}
+		$messageId = (int)$message->getId();
+		$payload = [
+			'meta' => [
+				'version' => self::CACHE_VERSION,
+				'savedAt' => time(),
+				'accountId' => $accountId,
+				'mailboxId' => $mailboxId,
+				'databaseId' => $messageId,
+				'uid' => (int)$message->getUid(),
+				'updatedAt' => (int)$message->getUpdatedAt(),
+				'messageId' => $message->getMessageId(),
+			],
+			'payload' => $body,
+		];
 		$content = json_encode(
-			$body,
+			$payload,
 			JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
 		);
 		if ($content === false) {
@@ -76,7 +92,8 @@ class MessageBodyStorage {
 	/**
 	 * Load the rendered body payload for a message, or null if not cached.
 	 */
-	public function get(int $accountId, int $mailboxId, int $messageId): ?array {
+	public function get(int $accountId, int $mailboxId, Message $message): ?array {
+		$messageId = (int)$message->getId();
 		$path = $this->mailboxDir($accountId, $mailboxId) . '/' . $messageId . '.json';
 		if (!is_file($path)) {
 			return null;
@@ -86,7 +103,45 @@ class MessageBodyStorage {
 			return null;
 		}
 		$data = json_decode($content, true);
-		return is_array($data) ? $data : null;
+		if (!is_array($data)) {
+			$this->delete($accountId, $mailboxId, $messageId);
+			return null;
+		}
+
+		if (!isset($data['meta'], $data['payload']) || !is_array($data['meta']) || !is_array($data['payload'])) {
+			$this->delete($accountId, $mailboxId, $messageId);
+			return null;
+		}
+
+		if (!$this->isFresh($data['meta'], $accountId, $mailboxId, $message)) {
+			$this->delete($accountId, $mailboxId, $messageId);
+			return null;
+		}
+
+		return $data['payload'];
+	}
+
+	/**
+	 * @param array<string, mixed> $meta
+	 */
+	private function isFresh(array $meta, int $accountId, int $mailboxId, Message $message): bool {
+		$messageId = (int)$message->getId();
+		$savedAt = (int)($meta['savedAt'] ?? 0);
+
+		if (($meta['version'] ?? null) !== self::CACHE_VERSION) {
+			return false;
+		}
+
+		if ($savedAt <= 0 || (time() - $savedAt) > self::MAX_AGE_SECONDS) {
+			return false;
+		}
+
+		return ($meta['accountId'] ?? null) === $accountId
+			&& ($meta['mailboxId'] ?? null) === $mailboxId
+			&& ($meta['databaseId'] ?? null) === $messageId
+			&& ($meta['uid'] ?? null) === (int)$message->getUid()
+			&& ($meta['updatedAt'] ?? null) === (int)$message->getUpdatedAt()
+			&& ($meta['messageId'] ?? null) === $message->getMessageId();
 	}
 
 	/**

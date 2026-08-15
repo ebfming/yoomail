@@ -6,3 +6,5 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 script('yoomail', 'yoomail');
+script('yoomail', 'yoomail-realtime-delta');
+script('yoomail', 'yoomail-list-cache');

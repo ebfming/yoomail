@@ -9,7 +9,7 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Runs in a forked child process. It owns one blocking IMAP IDLE connection
- * for one account's INBOX. When a change is detected it:
+ * for one account mailbox. When a change is detected it:
  *   1. immediately notifies the browser (signal A: mailbox-changed),
  *   2. kicks off the actual mailbox sync in the background — a separate
  *      `occ yoomail:account:sync --mailbox=<id> --notify-ipc=<ipc>` process
@@ -28,6 +28,7 @@ class ImapIdleChild
     public function __construct(
         private Account $account,
         private int $mailboxId,
+        private string $mailboxName,
         private string $ipcHost,
         private int $ipcPort,
         private LoggerInterface $logger,
@@ -56,8 +57,8 @@ class ImapIdleChild
                     15,
                 );
                 $client->connect();
-                $client->select('INBOX');
-                $this->logger->info("yoomail-realtime: [child] IDLE started for account {$this->account->getId()}");
+                $client->select($this->mailboxName);
+                $this->logger->info("yoomail-realtime: [child] IDLE started for account {$this->account->getId()} mailbox {$this->mailboxId} ({$this->mailboxName})");
                 $retry = 0;
 
                 while (!$this->stopped) {
@@ -66,7 +67,7 @@ class ImapIdleChild
                         break;
                     }
                     if ($change !== null) {
-                        $this->logger->debug("yoomail-realtime: [child] account {$this->account->getId()} change: $change");
+                        $this->logger->debug("yoomail-realtime: [child] account {$this->account->getId()} mailbox {$this->mailboxId} ({$this->mailboxName}) change: $change");
                         $this->handleChange();
                     }
                     // Keep alive after idle timeout
@@ -78,10 +79,10 @@ class ImapIdleChild
                 }
                 $retry++;
                 $this->logger->warning(
-                    "yoomail-realtime: [child] IDLE error account {$this->account->getId()}: " . $e->getMessage()
+                    "yoomail-realtime: [child] IDLE error account {$this->account->getId()} mailbox {$this->mailboxId} ({$this->mailboxName}): " . $e->getMessage()
                 );
                 if ($retry > $this->maxRetries) {
-                    $this->logger->error("yoomail-realtime: [child] giving up account {$this->account->getId()}");
+                    $this->logger->error("yoomail-realtime: [child] giving up account {$this->account->getId()} mailbox {$this->mailboxId} ({$this->mailboxName})");
                     break;
                 }
                 $backoff = [5, 15, 60, 300];
@@ -91,7 +92,7 @@ class ImapIdleChild
                 $client?->close();
             }
         }
-        $this->logger->info("yoomail-realtime: [child] IDLE loop stopped for account {$this->account->getId()}");
+        $this->logger->info("yoomail-realtime: [child] IDLE loop stopped for account {$this->account->getId()} mailbox {$this->mailboxId} ({$this->mailboxName})");
     }
 
     public function stop(): void

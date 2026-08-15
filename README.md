@@ -8,7 +8,7 @@
 
 YooMail is a secondary development (fork) of [Nextcloud Mail](https://github.com/nextcloud/mail) 5.10.12, focused on **realtime delivery** and **instant reading** of emails.
 
-> [中文版 README](README-zh.md) · [Changelog](CHANGELOG.md) · [Development notes](help/DEVELOPMENT.md)
+> [中文版 README](README-zh.md) · [Changelog](CHANGELOG.md) · [Deployment](help/DEPLOYMENT.md) · [Upstream diff & upgrade notes](help/UPSTREAM-DIFF-AND-UPGRADE.md)
 
 ## Highlights
 
@@ -60,54 +60,7 @@ sudo -u apache php occ app:enable yoomail
 >
 > On first enable, the app automatically creates its `yoomail_*` database tables (separate from the original `mail_*` tables).
 
-### 2. Deploy the realtime service (optional, enables realtime delivery)
-
-The realtime service is a systemd unit. Use the one-click deploy script (run as root):
-
-```bash
-sudo bash deploy.sh                  # auto-detect the Nextcloud directory
-sudo bash deploy.sh /path/to/nextcloud   # or specify it explicitly
-```
-
-The script will:
-1. Check that it is running as root
-2. Show the detected Nextcloud directory and ask for confirmation
-3. Auto-detect the PHP user (owner of `config/config.php`, e.g. `www-data`/`apache`)
-4. Generate and install `/etc/systemd/system/yoomail.service`
-5. Enable and start the service
-
-For non-interactive (CI) use: `YOOMAIL_ASSUME_YES=1 sudo bash deploy.sh <nc_dir>`
-
-### 3. Configure the nginx reverse proxy (WebSocket)
-
-Add the following to your nginx config (see `realtime/deploy/nginx-yoomail-ws.conf.snippet`):
-
-```nginx
-location /yoomail-ws {
-    proxy_pass http://127.0.0.1:8789;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "Upgrade";
-    proxy_set_header Host $host;
-    proxy_read_timeout 3600;
-    proxy_send_timeout 3600;
-}
-```
-
-### 4. Realtime service configuration (optional)
-
-Realtime service settings are stored as app configuration (in the `oc_appconfig` database table) and can be changed via the admin settings page. The keys and their defaults:
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `yoomail.realtime.ws_host` | `127.0.0.1` | WebSocket listen host |
-| `yoomail.realtime.ws_port` | `8789` | WebSocket port |
-| `yoomail.realtime.ipc_port` | `8790` | IPC port |
-| `yoomail.realtime.channel_port` | `2207` | Internal channel port |
-| `yoomail.realtime.ws_public_url` | *(empty)* | If proxied via a separate domain, e.g. `wss://mail.example.com/yoomail-ws` |
-| `yoomail.realtime.idle_refresh_seconds` | `1500` | IMAP IDLE refresh interval |
-
-> Changes take effect after restarting the realtime service: `sudo systemctl restart yoomail`
+Deployment, realtime service installation, nginx reverse proxy, and upgrade/deploy operations are documented in [help/DEPLOYMENT.md](help/DEPLOYMENT.md).
 
 ## Feedback & support
 

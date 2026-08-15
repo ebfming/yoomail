@@ -8,7 +8,7 @@
 
 YooMail 是基于 [Nextcloud Mail](https://github.com/nextcloud/mail) 5.10.12 的二次开发产品,专注**实时收信**与**秒开阅读**体验。
 
-> [English README](README.md) · [Changelog](CHANGELOG.md) · [开发文档](help/DEVELOPMENT-zh.md)
+> [English README](README.md) · [Changelog](CHANGELOG.md) · [部署文档](help/DEPLOYMENT-zh.md) · [源码改动与升级注意事项](help/UPSTREAM-DIFF-AND-UPGRADE-zh.md)
 
 ## 产品特色
 
@@ -60,54 +60,7 @@ sudo -u apache php occ app:enable yoomail
 >
 > 首次启用会自动创建 `yoomail_*` 数据库表(独立于原 `mail_*` 表)。
 
-### 2. 部署实时服务(可选,启用实时收信)
-
-实时服务以 systemd 单元管理,使用一键部署脚本(以 root 运行):
-
-```bash
-sudo bash deploy.sh                          # 自动探测 Nextcloud 目录
-sudo bash deploy.sh /path/to/nextcloud       # 或手动指定目录
-```
-
-脚本会:
-1. 检查是否以 root 运行
-2. 展示探测到的 Nextcloud 目录并请求确认
-3. 自动探测 PHP 运行用户(`config/config.php` 属主,如 `www-data`/`apache`)
-4. 生成并安装 `/etc/systemd/system/yoomail.service`
-5. 启用并启动服务
-
-非交互(CI)环境可用:`YOOMAIL_ASSUME_YES=1 sudo bash deploy.sh <nc目录>`
-
-### 3. 配置 nginx 反向代理(WebSocket)
-
-在 nginx 配置中增加(见 `realtime/deploy/nginx-yoomail-ws.conf.snippet`):
-
-```nginx
-location /yoomail-ws {
-    proxy_pass http://127.0.0.1:8789;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "Upgrade";
-    proxy_set_header Host $host;
-    proxy_read_timeout 3600;
-    proxy_send_timeout 3600;
-}
-```
-
-### 4. 实时服务配置(可选)
-
-实时服务配置存储为应用配置(数据库 `oc_appconfig` 表),可在后台设置页修改。配置项及默认值:
-
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `yoomail.realtime.ws_host` | `127.0.0.1` | WebSocket 监听地址 |
-| `yoomail.realtime.ws_port` | `8789` | WebSocket 端口 |
-| `yoomail.realtime.ipc_port` | `8790` | IPC 端口 |
-| `yoomail.realtime.channel_port` | `2207` | 内部 Channel 端口 |
-| `yoomail.realtime.ws_public_url` | *(空)* | 如使用独立域名反代,可填写 `wss://mail.example.com/yoomail-ws` |
-| `yoomail.realtime.idle_refresh_seconds` | `1500` | IMAP IDLE 刷新间隔 |
-
-> 修改后需重启实时服务生效:`sudo systemctl restart yoomail`
+安装部署、realtime 服务安装、nginx 反代以及升级部署操作，统一见 [help/DEPLOYMENT-zh.md](help/DEPLOYMENT-zh.md)。
 
 ## 反馈与支持
 

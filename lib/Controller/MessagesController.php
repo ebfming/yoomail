@@ -246,7 +246,7 @@ class MessagesController extends Controller {
 		}
 
 		// Serve the rendered body from the persistent body cache if present.
-		$cached = $this->bodyStorage->get($account->getId(), $mailbox->getId(), $id);
+		$cached = $this->bodyStorage->get($account->getId(), $mailbox->getId(), $message);
 		if ($cached !== null) {
 			$response = new JSONResponse($cached);
 			$response->cacheFor(60 * 60, false, true);
@@ -306,7 +306,7 @@ class MessagesController extends Controller {
 		}
 
 		// Persist the fully rendered body so subsequent opens are instant.
-		$this->bodyStorage->save($account->getId(), $mailbox->getId(), $id, $json);
+		$this->bodyStorage->save($account->getId(), $mailbox->getId(), $message, $json);
 
 		$response = new JSONResponse($json);
 
@@ -685,7 +685,7 @@ class MessagesController extends Controller {
 				// Reuse the persistent body cache created by getBody() so opening
 				// a message does not trigger a second IMAP round-trip just to
 				// render the HTML response.
-				$cachedBody = $this->bodyStorage->get($account->getId(), $mailbox->getId(), $id);
+				$cachedBody = $this->bodyStorage->get($account->getId(), $mailbox->getId(), $message);
 				if (is_array($cachedBody)
 					&& ($cachedBody['hasHtmlBody'] ?? false) === true
 					&& is_string($cachedBody['body'] ?? null)

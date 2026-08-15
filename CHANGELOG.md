@@ -13,7 +13,7 @@
 - ⚡ **实时收信(Realtime)**:新增 `realtime/` 服务(Workerman + IMAP IDLE + WebSocket),新邮件秒级推送,前端列表自动刷新。
 - 🚀 **正文缓存秒开**:新增 `MessageBodyStorage`,邮件正文首次渲染后持久化缓存,二次打开秒开。
 - 📨 **中国部分邮箱兼容修复**:修复腾讯企业邮箱、QQ邮箱、网易邮箱等对特殊文件夹(已发送/已删除/草稿箱)返回中文 UTF-7 名导致 UIDVALIDITY 变化、缓存反复清空的问题。
-- 📖 新增产品 README、CHANGELOG、部署文档(`realtime/DEPLOYMENT.md`)。
+- 📖 新增产品 README、CHANGELOG、部署文档(`help/DEPLOYMENT.md`)。
 
 ### Changed
 

@@ -1235,6 +1235,65 @@ class MessageMapper extends QBMapper {
 
 	/**
 	 * @param Mailbox $mailbox
+	 * @param int[] $uids
+	 *
+	 * @return int[]
+	 */
+	public function findIdsForUids(Mailbox $mailbox, array $uids): array {
+		if ($uids === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('id')
+			->from($this->getTableName())
+			->where(
+				$qb->expr()->eq('mailbox_id', $qb->createNamedParameter($mailbox->getId(), IQueryBuilder::PARAM_INT), IQueryBuilder::PARAM_INT),
+				$qb->expr()->in('uid', $qb->createParameter('uids'))
+			)
+			->orderBy('sent_at', 'desc');
+
+		$results = [];
+		foreach (array_chunk($uids, 1000) as $chunk) {
+			$qb->setParameter('uids', $chunk, IQueryBuilder::PARAM_INT_ARRAY);
+			$results[] = $this->findIds($qb);
+		}
+
+		return array_merge([], ...$results);
+	}
+
+	/**
+	 * @param Mailbox $mailbox
+	 * @param string $userId
+	 * @param int[] $uids
+	 *
+	 * @return Message[]
+	 */
+	public function findByUidsForUser(Mailbox $mailbox, string $userId, array $uids): array {
+		if ($uids === []) {
+			return [];
+		}
+
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->getTableName())
+			->where(
+				$qb->expr()->eq('mailbox_id', $qb->createNamedParameter($mailbox->getId()), IQueryBuilder::PARAM_INT),
+				$qb->expr()->in('uid', $qb->createParameter('uids'))
+			)
+			->orderBy('sent_at', 'desc');
+
+		$results = [];
+		foreach (array_chunk($uids, 1000) as $chunk) {
+			$qb->setParameter('uids', $chunk, IQueryBuilder::PARAM_INT_ARRAY);
+			$results[] = $this->findRelatedData($this->findEntities($qb), $userId);
+		}
+
+		return array_merge([], ...$results);
+	}
+
+	/**
+	 * @param Mailbox $mailbox
 	 * @param string $userId
 	 * @param int[] $ids
 	 *

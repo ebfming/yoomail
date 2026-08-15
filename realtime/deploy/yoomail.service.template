@@ -1,20 +1,21 @@
 [Unit]
 Description=YooMail Realtime Service (IMAP IDLE + WebSocket)
 Wants=network-online.target
-After=network-online.target mysql.service php8.5-fpm.service
+After=network-online.target
 
 [Service]
 Type=simple
 User=__PHP_USER__
-Group=__PHP_USER__
+Group=__PHP_GROUP__
 WorkingDirectory=__NC_ROOT__
-ExecStart=/usr/bin/php __NC_ROOT__/apps-extra/yoomail/realtime/server.php start
+ExecStart=__PHP_BIN__ __NC_ROOT__/apps-extra/yoomail/realtime/server.php start
 # systemd manages the process lifecycle; send SIGTERM to stop Workerman gracefully
 KillSignal=SIGTERM
 KillMode=control-group
 TimeoutStopSec=10
 Restart=always
 RestartSec=5
+# The service only needs write access to Nextcloud data and its own realtime area.
 # Hardening
 NoNewPrivileges=true
 PrivateTmp=true
