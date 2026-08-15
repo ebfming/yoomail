@@ -6,6 +6,12 @@
 
 本项目(YooMail)是基于 [Nextcloud Mail](https://github.com/nextcloud/mail) 的二次开发产品,所有版本基于上游 [5.10.12](https://github.com/nextcloud/mail/releases/tag/v5.10.12) 构建。
 
+## [Unreleased]
+
+### Fixed
+
+- 修复邮箱【订阅】/【取消订阅】操作报 500 的问题:部分邮箱服务器(腾讯企业邮箱/QQ 邮箱等)禁止 IMAP `SUBSCRIBE`/`UNSUBSCRIBE` 命令(实测 `imap.exmail.qq.com` 对所有邮箱的 UNSUBSCRIBE 均返回 `NO Not allow to unsubscribe!`)。现在降级为记录日志并同步邮箱列表后返回当前状态,不再中断请求。
+
 ## [0.1.0] - 2026-08-13
 
 ### Added
