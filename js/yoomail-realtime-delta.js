@@ -9,6 +9,30 @@
 		return window.OCA?.YooMailRealtime?.getMainStore?.() || null
 	}
 
+	function patchMailboxUpdateMerge(store) {
+		if (!store || store.__yoomailMailboxUpdateMergePatched || typeof store.updateMailboxMutation !== 'function') {
+			return
+		}
+
+		var originalUpdateMailboxMutation = store.updateMailboxMutation.bind(store)
+
+		store.updateMailboxMutation = function(payload) {
+			var mailbox = payload?.mailbox
+			var mailboxId = Number(mailbox?.databaseId)
+			var existingMailbox = Number.isFinite(mailboxId) ? store.getMailbox?.(mailboxId) : null
+
+			if (!existingMailbox || !mailbox || typeof mailbox !== 'object') {
+				return originalUpdateMailboxMutation(payload)
+			}
+
+			return originalUpdateMailboxMutation(Object.assign({}, payload, {
+				mailbox: Object.assign({}, existingMailbox, mailbox),
+			}))
+		}
+
+		store.__yoomailMailboxUpdateMergePatched = true
+	}
+
 	function patchFetchThreadRecovery(store) {
 		if (!store || store.__yoomailFetchThreadRecoveryPatched || typeof store.fetchThread !== 'function') {
 			return
@@ -132,6 +156,7 @@
 			return false
 		}
 
+		patchMailboxUpdateMerge(store)
 		patchFetchThreadRecovery(store)
 
 		var delta = payload?.realtimePayload
@@ -162,5 +187,29 @@
 		}
 
 		return true
+	}
+
+	function ensureStorePatches() {
+		var attempts = 0
+		var timer = window.setInterval(function() {
+			var store = getStore()
+			if (!store) {
+				attempts += 1
+				if (attempts >= 60) {
+					window.clearInterval(timer)
+				}
+				return
+			}
+
+			patchMailboxUpdateMerge(store)
+			patchFetchThreadRecovery(store)
+			window.clearInterval(timer)
+		}, 500)
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', ensureStorePatches, { once: true })
+	} else {
+		ensureStorePatches()
 	}
 })()
