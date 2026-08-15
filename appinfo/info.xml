@@ -26,17 +26,17 @@ This app is built on top of Nextcloud Mail **5.10.12**, with compatibility fixes
 	<version>0.1.0</version>
 	<internal-version>b-2026.08.13</internal-version>
 	<licence>agpl</licence>
-	<author homepage="https://github.com/tigersprite">adam &lt;dev@ebf.hk&gt;</author>
+	<author homepage="https://github.com/ebfming/yoomail">adam &lt;dev@ebf.hk&gt;</author>
 	<namespace>YooMail</namespace>
 	<documentation>
-		<user>https://github.com/tigersprite/yoomail#readme</user>
-		<admin>https://github.com/tigersprite/yoomail#readme</admin>
-		<developer>https://github.com/tigersprite/yoomail/blob/main/README.md</developer>
+		<user>https://github.com/ebfming/yoomail/yoomail#readme</user>
+		<admin>https://github.com/ebfming/yoomail/yoomail#readme</admin>
+		<developer>https://github.com/ebfming/yoomail/yoomail/blob/main/README.md</developer>
 	</documentation>
 	<category>social</category>
 	<category>office</category>
-	<website>https://github.com/tigersprite/yoomail#readme</website>
-	<bugs>https://github.com/tigersprite/yoomail/issues</bugs>
+	<website>https://github.com/ebfming/yoomail/yoomail#readme</website>
+	<bugs>https://github.com/ebfming/yoomail/yoomail/issues</bugs>
 	<repository type="git">https://github.com/nextcloud/mail.git</repository>
 	<screenshot>https://user-images.githubusercontent.com/12728974/266270227-86b99bbb-03ea-468b-8408-e248e1730bed.png</screenshot>
 	<dependencies>
