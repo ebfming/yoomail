@@ -28,6 +28,7 @@ use Workerman\Worker;
  *     IPC worker itself once it finished.
  *   IPC worker publishes both events on the channel
  *   WS worker (subscribed to the channel) pushes to online clients
+ * @version b-2026.08.13
  */
 class RealtimeServer
 {

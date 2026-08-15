@@ -10,6 +10,10 @@ YooMail 是基于 [Nextcloud Mail](https://github.com/nextcloud/mail) 的二次�
 
 > [English](CONTRIBUTING.md) · [代码规范](help/CODE-STANDARDS-zh.md) · [Changelog](CHANGELOG.md)
 
+## 维护者
+
+- adam <dev@ebf.hk>
+
 ## 行为准则
 
 请保持尊重与建设性。本项目遵循

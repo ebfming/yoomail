@@ -15,6 +15,7 @@ use Psr\Log\LoggerInterface;
  *      `occ yoomail:account:sync --mailbox=<id> --notify-ipc=<ipc>` process
  *      that writes the new messages into the local DB and then reports
  *      "sync-done" (signal B) itself, so the IDLE loop is never blocked.
+ * @version b-2026.08.13
  */
 class ImapIdleChild
 {

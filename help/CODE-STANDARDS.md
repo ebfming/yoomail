@@ -22,10 +22,14 @@ upon in the related issue/PR discussion.
   The English version is the source of truth; the Chinese version is a
   faithful translation.
 
+## 1.1 Project maintainers
+
+- Author: **adam**
+- Contact: **dev@ebf.hk**
+
 ## 2. PHP coding style
 
 - Follow **PSR-12** and the general style of the upstream Nextcloud Mail codebase.
-- Every file starts with `declare(strict_types=1);` and a SPDX header (see §7).
 - Use the `OCA\YooMail` namespace. Never use the `OCA\Mail` namespace.
 - Use **typed properties and parameters** where possible; rely on constructor
   property promotion (`private readonly ...`) for injected services.
@@ -33,6 +37,55 @@ upon in the related issue/PR discussion.
 - Do not use deprecated APIs; prefer the `OCP\` public interfaces over
   `OC\` internals (e.g. `OCP\IConfig`, `OCP\Server`, `Psr\Log\LoggerInterface`).
 - Static analysis: keep the code free of obvious Psalm/PHPStan errors.
+
+### 2.1 PHPDoc / DocBlock comments
+
+All classes, methods and property documentation **must** use PHPDoc /
+DocBlock style comments.
+
+- Use the `/** ... */` format.
+- Include `@param`, `@return`, `@throws` as needed.
+- Use PHPDoc syntax compatible with PHPStan / Psalm
+  (e.g. `int[]`, `array<string, mixed>`, `?string`, generics).
+- **`@version` must be the current git branch name**, obtained via:
+
+  ```bash
+  git branch --show-current
+  ```
+
+  Example for a class on branch `b-2026.08.13`:
+
+  ```php
+  /**
+   * Orchestrates the realtime service.
+   *
+   * @version b-2026.08.13
+   */
+  final class RealtimeServer { ... }
+  ```
+
+- Keep the summary line concise; document the *what and why*, not the *how*.
+
+### 2.2 Strict typing
+
+- **Enable strict types in all PHP files** where applicable:
+
+  ```php
+  <?php
+
+  declare(strict_types=1);
+
+  namespace OCA\YooMail\...;
+  ```
+
+- `declare(strict_types=1);` must appear **immediately after `<?php`** and
+  **before** `namespace`, `use`, `class`, `function` and any other code.
+- Use explicit parameter types, return types and property types wherever
+  possible.
+- Avoid relying on PHP implicit type coercion; convert explicitly
+  (e.g. `(int)`, `(string)`, `filter_var`).
+- Files inherited from upstream that still lack `declare(strict_types=1)`
+  may be migrated opportunistically; new code must always enable it.
 
 ## 3. Frontend (Vue/JS)
 

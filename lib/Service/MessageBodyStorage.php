@@ -23,6 +23,7 @@ use Psr\Log\LoggerInterface;
  * found unreliable in this environment (its rootFolder view refused to create
  * files under the appdata mount in CLI/console contexts), so this service
  * resolves the appdata path from the Nextcloud config and manages it directly.
+ * @version b-2026.08.13
  */
 class MessageBodyStorage {
 	private const CACHE_VERSION = 2;

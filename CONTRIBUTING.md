@@ -11,6 +11,10 @@ This guide explains how to contribute effectively.
 
 > [中文版](CONTRIBUTING-zh.md) · [Code Standards](help/CODE-STANDARDS.md) · [Changelog](CHANGELOG.md)
 
+## Maintainers
+
+- adam <dev@ebf.hk>
+
 ## Code of conduct
 
 Be respectful and constructive. This project follows the

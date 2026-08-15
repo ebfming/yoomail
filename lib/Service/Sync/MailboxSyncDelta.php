@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 namespace OCA\YooMail\Service\Sync;
 
+/**
+ * Immutable result of a mailbox sync run.
+ *
+ * Carries the lists of new/changed/vanished messages produced by one sync
+ * pass so the caller can apply them to the database cache in one go.
+ *
+ * @version b-2026.08.13
+ */
 final class MailboxSyncDelta {
 	/**
 	 * @param int[] $newUids

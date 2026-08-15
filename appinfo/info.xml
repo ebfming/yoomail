@@ -26,7 +26,7 @@ This app is built on top of Nextcloud Mail **5.10.12**, with compatibility fixes
 	<version>0.1.0</version>
 	<internal-version>b-2026.08.13</internal-version>
 	<licence>agpl</licence>
-	<author homepage="https://github.com/tigersprite">TigerSprite Team</author>
+	<author homepage="https://github.com/tigersprite">adam &lt;dev@ebf.hk&gt;</author>
 	<namespace>YooMail</namespace>
 	<documentation>
 		<user>https://github.com/tigersprite/yoomail#readme</user>

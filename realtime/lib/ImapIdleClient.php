@@ -12,6 +12,7 @@ namespace OCA\YooMailRealtime;
  * that a mailbox changed (EXISTS / RECENT / EXPUNGE). It never fetches
  * or parses message content — the actual sync is done by reusing the
  * existing Nextcloud Mail synchronization services.
+ * @version b-2026.08.13
  */
 class ImapIdleClient
 {

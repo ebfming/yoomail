@@ -12,6 +12,7 @@ use Workerman\Connection\TcpConnection;
  * The actual Workerman worker is created by RealtimeServer (so the WS
  * worker and the IDLE listeners can coexist in the same process). This
  * class only contains the auth + event wiring logic.
+ * @version b-2026.08.13
  */
 class WebSocketServer
 {

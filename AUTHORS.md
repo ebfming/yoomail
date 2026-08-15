@@ -4,6 +4,12 @@
 -->
 # Authors
 
+## YooMail maintainers
+
+- adam <dev@ebf.hk>
+
+## Upstream Nextcloud Mail authors
+
 - Ad5001 <mail@ad5001.eu>
 - Aidan Amavi <mail@aidanamavi.com>
 - Alex <aleksandrosansan@gmail.com>

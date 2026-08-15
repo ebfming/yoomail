@@ -14,15 +14,62 @@
 - **所有面向用户的文案必须以英文源字符串书写**，并走多语言（l10n）机制（见 §4）。禁止在用户可见消息中硬编码中文（或任何其他语言）。
 - 文档采用**中英双语成对维护**（`*-zh.md` + `*.md`）。英文版为权威版本，中文版为忠实翻译。
 
+## 1.1 项目维护者
+
+- 作者：**adam**
+- 联系方式：**dev@ebf.hk**
+
 ## 2. PHP 编码风格
 
 - 遵循 **PSR-12** 及上游 Nextcloud Mail 代码库的整体风格。
-- 每个文件以 `declare(strict_types=1);` 和 SPDX 头开头（见 §7）。
 - 使用 `OCA\YooMail` 命名空间，禁止使用 `OCA\Mail` 命名空间。
 - 尽量使用**类型化属性和参数**；注入的服务优先使用构造器属性提升（`private readonly ...`）。
 - 优先使用提前返回和守卫子句；方法保持短小聚焦。
 - 不使用已弃用 API；优先使用 `OCP\` 公共接口而非 `OC\` 内部实现（例如 `OCP\IConfig`、`OCP\Server`、`Psr\Log\LoggerInterface`）。
 - 静态分析：保持代码无明显 Psalm/PHPStan 错误。
+
+### 2.1 PHPDoc / DocBlock 注释
+
+所有类、方法、属性说明**必须**使用 PHPDoc / DocBlock 风格注释。
+
+- 使用 `/** ... */` 格式。
+- 按需包含 `@param`、`@return`、`@throws`。
+- 使用兼容 PHPStan / Psalm 的 PHPDoc 语法（例如 `int[]`、`array<string, mixed>`、`?string`、泛型）。
+- **`@version` 必须使用当前 git 分支名称**，通过以下命令获取：
+
+  ```bash
+  git branch --show-current
+  ```
+
+  例如分支为 `b-2026.08.13` 时的类注释：
+
+  ```php
+  /**
+   * Orchestrates the realtime service.
+   *
+   * @version b-2026.08.13
+   */
+  final class RealtimeServer { ... }
+  ```
+
+- 摘要行保持简洁；说明"做了什么和为什么"，而不是"怎么做"。
+
+### 2.2 严格类型模式
+
+- **所有 PHP 文件尽量启用严格类型模式**：
+
+  ```php
+  <?php
+
+  declare(strict_types=1);
+
+  namespace OCA\YooMail\...;
+  ```
+
+- `declare(strict_types=1);` 必须**紧跟 `<?php` 之后**，并位于 `namespace`、`use`、`class`、`function` 等代码**之前**。
+- 尽量使用明确的参数类型、返回值类型、属性类型。
+- 避免依赖 PHP 隐式类型转换；需要时显式转换（例如 `(int)`、`(string)`、`filter_var`）。
+- 从上游继承且尚未启用 `declare(strict_types=1)` 的文件可在合适时机迁移；新代码必须启用。
 
 ## 3. 前端（Vue/JS）
 

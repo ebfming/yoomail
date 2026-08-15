@@ -17,6 +17,8 @@
 - 代码注释、脚本提示统一改为英文;新增多语言词条(同步限流提示走 l10n,`zh_CN.json` 保持原中文文案)。
 - `appinfo/info.xml` 的 `description` 改为英文(应用商店元数据,便于国际发布)。
 - 新增开发规范文档(中英双份):`help/CODE-STANDARDS.md`、`CONTRIBUTING.md`、`SECURITY.md` 及对应 `-zh.md`,README 文档索引同步更新。
+- 项目信息落地:作者/维护者 `adam <dev@ebf.hk>`(info.xml `<author>`、AUTHORS.md、CONTRIBUTING)。
+- 代码规范补充 PHPDoc 约定(`@param`/`@return`/`@throws`、兼容 PHPStan/Psalm、`@version` 使用当前 git 分支名)与严格类型模式约定;YooMail 原创 PHP 文件类注释统一标注 `@version b-2026.08.13`。
 
 ## [0.1.0] - 2026-08-13
 

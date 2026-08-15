@@ -14,6 +14,7 @@ use Psr\Log\LoggerInterface;
  * (EXISTS/RECENT/EXPUNGE), it calls the provided callback. The callback is
  * expected to perform the actual sync and return true so that the IDLE loop
  * can resume.
+ * @version b-2026.08.13
  */
 class ImapIdleConnection
 {
