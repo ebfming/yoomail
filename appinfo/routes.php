@@ -361,6 +361,21 @@ return [
 			'verb' => 'PUT'
 		],
 		[
+			'name' => 'settings#getBasicSettings',
+			'url' => '/api/settings/basic',
+			'verb' => 'GET'
+		],
+		[
+			'name' => 'settings#updateBasicSettings',
+			'url' => '/api/settings/basic',
+			'verb' => 'PUT'
+		],
+		[
+			'name' => 'settings#getRealtimeHealth',
+			'url' => '/api/settings/realtime-health',
+			'verb' => 'GET'
+		],
+		[
 			'name' => 'trusted_senders#setTrusted',
 			'url' => '/api/trustedsenders/{email}',
 			'verb' => 'PUT'
@@ -534,6 +549,16 @@ return [
 			'name' => 'realtime#token',
 			'url' => '/api/realtime/token',
 			'verb' => 'POST',
+		],
+		[
+			'name' => 'notificationSettings#getSettings',
+			'url' => '/api/settings/notifications',
+			'verb' => 'GET',
+		],
+		[
+			'name' => 'notificationSettings#updateSettings',
+			'url' => '/api/settings/notifications',
+			'verb' => 'PUT',
 		],
 	],
 	'resources' => [

@@ -22,6 +22,7 @@ use OCA\YooMail\Service\AliasesService;
 use OCA\YooMail\Service\Classification\ClassificationSettingsService;
 use OCA\YooMail\Service\ContextChat\ContextChatSettingsService;
 use OCA\YooMail\Service\InternalAddressService;
+use OCA\YooMail\Service\NotificationSettingsService;
 use OCA\YooMail\Service\OutboxService;
 use OCA\YooMail\Service\QuickActionsService;
 use OCA\YooMail\Service\SmimeService;
@@ -78,6 +79,7 @@ class PageController extends Controller {
 	private InternalAddressService $internalAddressService;
 	private QuickActionsService $quickActionsService;
 	private ContextChatSettingsService $contextChatSettingsService;
+	private NotificationSettingsService $notificationSettingsService;
 
 	public function __construct(
 		string $appName,
@@ -102,6 +104,7 @@ class PageController extends Controller {
 		InternalAddressService $internalAddressService,
 		IAvailabilityCoordinator $availabilityCoordinator,
 		QuickActionsService $quickActionsService,
+		NotificationSettingsService $notificationSettingsService,
 		private IAppManager $appManager,
 		ContextChatSettingsService $contextChatSettingsService,
 		private ClassificationSettingsService $classificationSettingsService,
@@ -129,6 +132,7 @@ class PageController extends Controller {
 		$this->availabilityCoordinator = $availabilityCoordinator;
 		$this->quickActionsService = $quickActionsService;
 		$this->contextChatSettingsService = $contextChatSettingsService;
+		$this->notificationSettingsService = $notificationSettingsService;
 	}
 
 	/**
@@ -187,7 +191,22 @@ class PageController extends Controller {
 		// Reserved for a future settings page; frontend defaults to 24h.
 		$this->initialStateService->provideInitialState(
 			'time-format',
-			$this->config->getUserValue($this->currentUserId, 'yoomail', 'time-format', '24')
+			$this->config->getUserValue(
+				$this->currentUserId,
+				'yoomail',
+				'time-format',
+				$this->config->getAppValue('yoomail', 'time_format_default', '24')
+			)
+		);
+
+		$this->initialStateService->provideInitialState(
+			'notification-settings',
+			$this->notificationSettingsService->getUserSettings($this->currentUserId)
+		);
+
+		$this->initialStateService->provideInitialState(
+			'notification-audio-urls',
+			$this->notificationSettingsService->getAudioUrls()
 		);
 
 		$mailAccounts = $this->accountService->findByUserId($this->currentUserId);

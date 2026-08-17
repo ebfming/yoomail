@@ -19,13 +19,21 @@ use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\OpenAPI;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IConfig;
+use OCP\IL10N;
 use OCP\IRequest;
 use Psr\Container\ContainerInterface;
 
 use function array_merge;
+use function filter_var;
+use function fsockopen;
+use function in_array;
+use function preg_match;
 
 #[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
 class SettingsController extends Controller {
+	private const TIME_FORMATS = ['12', '24'];
+	private const REALTIME_MODES = ['websocket', 'http'];
+
 	private ProvisioningManager $provisioningManager;
 	private AntiSpamService $antiSpamService;
 	private ContainerInterface $container;
@@ -37,6 +45,7 @@ class SettingsController extends Controller {
 		AntiSpamService $antiSpamService,
 		IConfig $config,
 		ContainerInterface $container,
+		private IL10N $l10n,
 		private ClassificationSettingsService $classificationSettingsService,
 	) {
 		parent::__construct(Application::APP_ID, $request);
@@ -125,6 +134,112 @@ class SettingsController extends Controller {
 	public function setImportanceClassificationEnabledByDefault(bool $enabledByDefault): JSONResponse {
 		$this->classificationSettingsService->setClassificationEnabledByDefault($enabledByDefault);
 		return new JSONResponse([]);
+	}
+
+	public function getBasicSettings(): JSONResponse {
+		return new JSONResponse($this->readBasicSettings());
+	}
+
+	public function updateBasicSettings(
+		string $timeFormatDefault,
+		string $realtimeMode,
+		bool $deleteSyncLocalToServer,
+		bool $deleteSyncServerToLocal,
+	): JSONResponse {
+		if (!in_array($timeFormatDefault, self::TIME_FORMATS, true)) {
+			return HttpJsonResponse::fail([$this->l10n->t('Unsupported time format')], 400);
+		}
+
+		if (!in_array($realtimeMode, self::REALTIME_MODES, true)) {
+			return HttpJsonResponse::fail([$this->l10n->t('Unsupported mail sync mode')], 400);
+		}
+
+		$this->config->setAppValue(Application::APP_ID, 'time_format_default', $timeFormatDefault);
+		$this->config->setAppValue(Application::APP_ID, 'realtime_mode', $realtimeMode);
+		$this->config->setAppValue(Application::APP_ID, 'delete_sync_local_to_server', $deleteSyncLocalToServer ? 'yes' : 'no');
+		$this->config->setAppValue(Application::APP_ID, 'delete_sync_server_to_local', $deleteSyncServerToLocal ? 'yes' : 'no');
+
+		return new JSONResponse($this->readBasicSettings());
+	}
+
+	public function getRealtimeHealth(): JSONResponse {
+		$settings = $this->readBasicSettings();
+		$mode = $settings['realtimeMode'];
+		$host = $settings['wsHost'];
+		$port = (int)$settings['wsPort'];
+		$publicUrl = $settings['wsPublicUrl'];
+
+		$issues = [];
+		$status = 'ok';
+		$reachable = false;
+
+		if ($mode !== 'websocket') {
+			$status = 'warning';
+			$issues[] = $this->l10n->t('Realtime mode is disabled. YooMail will use classic HTTP sync.');
+		} else {
+			$reachable = $this->canConnectToSocket($host, $port);
+			if (!$reachable) {
+				$status = 'error';
+				$issues[] = $this->l10n->t('Cannot connect to the realtime socket at %1$s:%2$s.', [$host, (string)$port]);
+			}
+
+			if ($publicUrl !== '' && filter_var($publicUrl, FILTER_VALIDATE_URL) === false) {
+				$status = 'error';
+				$issues[] = $this->l10n->t('The public WebSocket URL is invalid.');
+			}
+
+			if ($publicUrl !== '' && !preg_match('/^wss?:\\/\\//', $publicUrl)) {
+				$status = 'error';
+				$issues[] = $this->l10n->t('The public WebSocket URL must start with ws:// or wss://.');
+			}
+		}
+
+		return new JSONResponse([
+			'status' => $status,
+			'mode' => $mode,
+			'reachable' => $reachable,
+			'host' => $host,
+			'port' => $port,
+			'publicUrl' => $publicUrl,
+			'issues' => $issues,
+			'summary' => $this->buildHealthSummary($status, $mode, $host, $port),
+		]);
+	}
+
+	private function readBasicSettings(): array {
+		return [
+			'timeFormatDefault' => $this->config->getAppValue(Application::APP_ID, 'time_format_default', '24'),
+			'realtimeMode' => $this->config->getAppValue(Application::APP_ID, 'realtime_mode', 'websocket'),
+			'deleteSyncLocalToServer' => $this->config->getAppValue(Application::APP_ID, 'delete_sync_local_to_server', 'yes') === 'yes',
+			'deleteSyncServerToLocal' => $this->config->getAppValue(Application::APP_ID, 'delete_sync_server_to_local', 'yes') === 'yes',
+			'wsHost' => $this->config->getAppValue(Application::APP_ID, 'realtime_ws_host', '127.0.0.1'),
+			'wsPort' => (int)$this->config->getAppValue(Application::APP_ID, 'realtime_ws_port', '8789'),
+			'wsPublicUrl' => $this->config->getAppValue(Application::APP_ID, 'realtime_ws_public_url', ''),
+		];
+	}
+
+	private function canConnectToSocket(string $host, int $port): bool {
+		$errno = 0;
+		$errstr = '';
+		$socket = @fsockopen($host, $port, $errno, $errstr, 2.0);
+		if ($socket === false) {
+			return false;
+		}
+
+		fclose($socket);
+		return true;
+	}
+
+	private function buildHealthSummary(string $status, string $mode, string $host, int $port): string {
+		if ($mode !== 'websocket') {
+			return $this->l10n->t('Realtime sync is disabled. HTTP sync is active.');
+		}
+
+		if ($status === 'ok') {
+			return $this->l10n->t('Realtime socket is reachable at %1$s:%2$s.', [$host, (string)$port]);
+		}
+
+		return $this->l10n->t('Realtime socket check failed for %1$s:%2$s.', [$host, (string)$port]);
 	}
 
 }

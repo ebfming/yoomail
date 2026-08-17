@@ -1,0 +1,38 @@
+#yoomail-personal-notification-settings {
+	max-width: 900px;
+}
+
+#yoomail-personal-notification-settings .yoomail-settings-group {
+	margin-top: calc(var(--default-grid-baseline) * 4);
+}
+
+#yoomail-personal-notification-settings .yoomail-checkbox-label {
+	max-width: 900px;
+	line-height: 1.5;
+}
+
+#yoomail-personal-notification-settings input.checkbox + .yoomail-checkbox-label {
+	display: inline-block;
+}
+
+#yoomail-personal-notification-settings .yoomail-setting-copy {
+	margin-inline-start: calc(16px + var(--default-grid-baseline) * 2);
+	max-width: 900px;
+}
+
+#yoomail-personal-notification-settings .yoomail-setting-copy.settings-hint {
+	margin-top: 6px;
+}
+
+#yoomail-personal-notification-settings .yoomail-sound-grid {
+	display: grid;
+	gap: calc(var(--default-grid-baseline) * 2);
+	margin-top: calc(var(--default-grid-baseline) * 2);
+}
+
+#yoomail-personal-notification-settings .yoomail-setting-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: calc(var(--default-grid-baseline) * 2);
+	margin-top: calc(var(--default-grid-baseline) * 2);
+}

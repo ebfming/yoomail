@@ -87,7 +87,10 @@ This app is built on top of Nextcloud Mail **5.10.12**, with compatibility fixes
 		<command>OCA\YooMail\Command\RunMetaEstimator</command>
 	</commands>
 	<settings>
+		<admin-section>OCA\YooMail\Settings\AdminSection</admin-section>
 		<admin>OCA\YooMail\Settings\AdminSettings</admin>
+		<personal-section>OCA\YooMail\Settings\PersonalSection</personal-section>
+		<personal>OCA\YooMail\Settings\PersonalSettings</personal>
 	</settings>
 	<!-- YooMail is a secondary development (fork) of the Nextcloud Mail app.
 	     This records the upstream version this build is based on. -->

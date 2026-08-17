@@ -90,6 +90,20 @@ class AdminSettings implements ISettings {
 
 		$this->initialStateService->provideInitialState(
 			Application::APP_ID,
+			'admin_basic_settings',
+			[
+				'timeFormatDefault' => $this->config->getAppValue('yoomail', 'time_format_default', '24'),
+				'realtimeMode' => $this->config->getAppValue('yoomail', 'realtime_mode', 'websocket'),
+				'deleteSyncLocalToServer' => $this->config->getAppValue('yoomail', 'delete_sync_local_to_server', 'yes') === 'yes',
+				'deleteSyncServerToLocal' => $this->config->getAppValue('yoomail', 'delete_sync_server_to_local', 'yes') === 'yes',
+				'wsHost' => $this->config->getAppValue('yoomail', 'realtime_ws_host', '127.0.0.1'),
+				'wsPort' => (int)$this->config->getAppValue('yoomail', 'realtime_ws_port', '8789'),
+				'wsPublicUrl' => $this->config->getAppValue('yoomail', 'realtime_ws_public_url', ''),
+			]
+		);
+
+		$this->initialStateService->provideInitialState(
+			Application::APP_ID,
 			'llm_processing',
 			$this->aiIntegrationsService->isLlmProcessingEnabled(),
 		);
@@ -147,7 +161,7 @@ class AdminSettings implements ISettings {
 
 	#[\Override]
 	public function getSection() {
-		return 'groupware';
+		return 'yoomail';
 	}
 
 	#[\Override]

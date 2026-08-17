@@ -8,3 +8,4 @@
 script('yoomail', 'yoomail');
 script('yoomail', 'yoomail-realtime-delta');
 script('yoomail', 'yoomail-list-cache');
+script('yoomail', 'yoomail-notifications');

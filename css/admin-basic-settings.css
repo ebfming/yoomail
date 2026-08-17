@@ -1,0 +1,73 @@
+#yoomail-admin-basic-settings .settings-section {
+	max-width: 900px;
+	margin-inline: calc(var(--default-grid-baseline) * 6) auto;
+	padding-block: calc(var(--default-grid-baseline) * 4) calc(var(--default-grid-baseline) * 8);
+}
+
+#yoomail-admin-basic-settings .ym-admin-grid {
+	display: grid;
+	gap: calc(var(--default-grid-baseline) * 5);
+	margin-block-start: calc(var(--default-grid-baseline) * 5);
+}
+
+#yoomail-admin-basic-settings .ym-admin-card {
+	padding: calc(var(--default-grid-baseline) * 4);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius);
+	background-color: var(--color-main-background);
+}
+
+#yoomail-admin-basic-settings .ym-admin-card h3 {
+	margin-block: 0 calc(var(--default-grid-baseline) * 2);
+	font-size: 15px;
+	font-weight: 700;
+}
+
+#yoomail-admin-basic-settings .ym-admin-card p {
+	margin-block: 0 calc(var(--default-grid-baseline) * 2);
+}
+
+#yoomail-admin-basic-settings .ym-admin-control-row input.radio + label,
+#yoomail-admin-basic-settings .ym-admin-control-row input.checkbox + label {
+	display: inline-block;
+	line-height: 1.5;
+}
+
+#yoomail-admin-basic-settings .ym-admin-indented {
+	margin-inline-start: calc(16px + var(--default-grid-baseline) * 2);
+}
+
+#yoomail-admin-basic-settings .ym-admin-actions {
+	margin-block-start: calc(var(--default-grid-baseline) * 6);
+}
+
+#yoomail-admin-basic-settings .ym-admin-health {
+	margin-block-end: calc(var(--default-grid-baseline) * 3);
+	padding: calc(var(--default-grid-baseline) * 3);
+	border-inline-start: 4px solid var(--color-warning);
+	border-radius: var(--border-radius);
+	background-color: var(--color-background-hover);
+	color: var(--color-main-text);
+}
+
+#yoomail-admin-basic-settings .ym-admin-health--ok {
+	border-inline-start-color: var(--color-success);
+}
+
+#yoomail-admin-basic-settings .ym-admin-health--error {
+	border-inline-start-color: var(--color-error);
+}
+
+#yoomail-admin-basic-settings .ym-admin-health--error .ym-admin-health-summary,
+#yoomail-admin-basic-settings .ym-admin-warning {
+	color: var(--color-error);
+}
+
+#yoomail-admin-basic-settings .ym-admin-health-summary {
+	font-weight: 600;
+}
+
+#yoomail-admin-basic-settings .ym-admin-list {
+	margin-block: var(--default-grid-baseline) 0;
+	padding-inline-start: calc(var(--default-grid-baseline) * 5);
+}

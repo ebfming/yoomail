@@ -144,9 +144,33 @@
 		})
 	}
 
+	function dispatchNewMailEvent(mailboxId, delta) {
+		var messages = normalizeEnvelopes(delta?.newMessages, {
+			databaseId: mailboxId,
+		})
+		if (messages.length === 0) {
+			return
+		}
+
+		window.dispatchEvent(new CustomEvent('yoomail:new-mail', {
+			detail: {
+				mailboxId: mailboxId,
+				messages: messages,
+			},
+		}))
+	}
+
 	window.OCA = window.OCA || {}
 	window.OCA.YooMailRealtime = window.OCA.YooMailRealtime || {}
 	window.OCA.YooMailRealtime.applySyncDone = function(payload) {
+		var delta = payload?.realtimePayload
+		var mailboxId = Number(payload?.mailboxId)
+		if (!delta || !Number.isFinite(mailboxId)) {
+			return false
+		}
+
+		dispatchNewMailEvent(mailboxId, delta)
+
 		if (!isMailboxRoute()) {
 			return false
 		}
@@ -158,12 +182,6 @@
 
 		patchMailboxUpdateMerge(store)
 		patchFetchThreadRecovery(store)
-
-		var delta = payload?.realtimePayload
-		var mailboxId = Number(payload?.mailboxId)
-		if (!delta || !Number.isFinite(mailboxId)) {
-			return false
-		}
 
 		var mailbox = store.getMailbox?.(mailboxId)
 		if (!mailbox) {
