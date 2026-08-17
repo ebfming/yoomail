@@ -72,15 +72,18 @@
 			}
 		}
 
-		async function saveSettings() {
-			const payload = {
-				nativeNewMail: root.querySelector('#ym-native-new-mail').checked,
-				soundEnabled: root.querySelector('#ym-sound-enabled').checked,
-				toastEnabled: root.querySelector('#ym-toast-enabled').checked,
-				soundNewMail: root.querySelector('#ym-sound-new-mail').checked,
-				soundSendSuccess: root.querySelector('#ym-sound-send-success').checked,
-				soundSendFail: root.querySelector('#ym-sound-send-fail').checked,
-			}
+			async function saveSettings() {
+				const checkedValue = function(selector) {
+					return root.querySelector(selector).checked ? 'yes' : 'no'
+				}
+				const payload = {
+					nativeNewMail: checkedValue('#ym-native-new-mail'),
+					soundEnabled: checkedValue('#ym-sound-enabled'),
+					toastEnabled: checkedValue('#ym-toast-enabled'),
+					soundNewMail: checkedValue('#ym-sound-new-mail'),
+					soundSendSuccess: checkedValue('#ym-sound-send-success'),
+					soundSendFail: checkedValue('#ym-sound-send-fail'),
+				}
 
 			const response = await fetch(apiUrl('/api/settings/notifications'), {
 				method: 'PUT',
@@ -93,12 +96,21 @@
 				body: JSON.stringify(payload),
 			})
 
-			if (!response.ok) {
-				throw new Error(t(appId, 'Could not save YooMail notification settings'))
-			}
+				if (!response.ok) {
+					throw new Error(t(appId, 'Could not save YooMail notification settings'))
+				}
 
-			OC.Notification.showTemporary(t(appId, 'YooMail notification settings saved'))
-		}
+				const savedSettings = await response.json()
+				try {
+					localStorage.setItem('yoomail-notification-settings-updated', JSON.stringify({
+						time: Date.now(),
+						settings: savedSettings,
+					}))
+				} catch (error) {
+				}
+
+				OC.Notification.showTemporary(t(appId, 'YooMail notification settings saved'))
+			}
 
 			async function requestPermission() {
 				if (!('Notification' in window)) {

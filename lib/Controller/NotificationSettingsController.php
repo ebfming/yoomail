@@ -18,14 +18,14 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\Util;
 
-class NotificationSettingsController extends Controller {
-	public function __construct(
-		IRequest $request,
-		private ?string $userId,
-		private NotificationSettingsService $notificationSettingsService,
-	) {
-		parent::__construct(Application::APP_ID, $request);
-	}
+	class NotificationSettingsController extends Controller {
+		public function __construct(
+			private IRequest $request,
+			private ?string $userId,
+			private NotificationSettingsService $notificationSettingsService,
+		) {
+			parent::__construct(Application::APP_ID, $request);
+		}
 
 	#[NoAdminRequired]
 	public function index(): TemplateResponse {
@@ -57,27 +57,34 @@ class NotificationSettingsController extends Controller {
 	}
 
 	#[NoAdminRequired]
-	public function updateSettings(
-		bool $nativeNewMail,
-		bool $soundEnabled,
-		bool $toastEnabled,
-		bool $soundNewMail,
-		bool $soundSendSuccess,
-		bool $soundSendFail,
-	): JSONResponse {
+	public function updateSettings(): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse(['message' => 'Not authenticated'], 401);
 		}
 
+		$data = $this->readJsonOrRequestParams();
+
 		return new JSONResponse(
-			$this->notificationSettingsService->updateUserSettings($this->userId, [
-				'nativeNewMail' => $nativeNewMail,
-				'soundEnabled' => $soundEnabled,
-				'toastEnabled' => $toastEnabled,
-				'soundNewMail' => $soundNewMail,
-				'soundSendSuccess' => $soundSendSuccess,
-				'soundSendFail' => $soundSendFail,
-			])
+			$this->notificationSettingsService->updateUserSettings($this->userId, $data)
 		);
+	}
+
+	private function readJsonOrRequestParams(): array {
+		$content = $this->request->getContent();
+		if (is_string($content) && trim($content) !== '') {
+			$data = json_decode($content, true);
+			if (is_array($data)) {
+				return $data;
+			}
+		}
+
+		return [
+			'nativeNewMail' => $this->request->getParam('nativeNewMail'),
+			'soundEnabled' => $this->request->getParam('soundEnabled'),
+			'toastEnabled' => $this->request->getParam('toastEnabled'),
+			'soundNewMail' => $this->request->getParam('soundNewMail'),
+			'soundSendSuccess' => $this->request->getParam('soundSendSuccess'),
+			'soundSendFail' => $this->request->getParam('soundSendFail'),
+		];
 	}
 }

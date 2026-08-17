@@ -15,12 +15,12 @@ use OCP\IURLGenerator;
 
 class NotificationSettingsService {
 	private const DEFAULTS = [
-		'nativeNewMail' => false,
-		'soundEnabled' => true,
-		'toastEnabled' => true,
-		'soundNewMail' => true,
-		'soundSendSuccess' => true,
-		'soundSendFail' => true,
+		'nativeNewMail' => 'no',
+		'soundEnabled' => 'yes',
+		'toastEnabled' => 'yes',
+		'soundNewMail' => 'yes',
+		'soundSendSuccess' => 'yes',
+		'soundSendFail' => 'yes',
 	];
 
 	public function __construct(
@@ -31,33 +31,33 @@ class NotificationSettingsService {
 
 	public function getUserSettings(string $userId): array {
 		return [
-			'nativeNewMail' => $this->getBool($userId, 'notification_native_new_mail', self::DEFAULTS['nativeNewMail']),
-			'soundEnabled' => $this->getBool($userId, 'notification_sound_enabled', self::DEFAULTS['soundEnabled']),
-			'toastEnabled' => $this->getBool($userId, 'notification_toast_enabled', self::DEFAULTS['toastEnabled']),
-			'soundNewMail' => $this->getBool($userId, 'notification_sound_new_mail', self::DEFAULTS['soundNewMail']),
-			'soundSendSuccess' => $this->getBool($userId, 'notification_sound_send_success', self::DEFAULTS['soundSendSuccess']),
-			'soundSendFail' => $this->getBool($userId, 'notification_sound_send_fail', self::DEFAULTS['soundSendFail']),
+			'nativeNewMail' => $this->getSwitch($userId, 'notification_native_new_mail', self::DEFAULTS['nativeNewMail']),
+			'soundEnabled' => $this->getSwitch($userId, 'notification_sound_enabled', self::DEFAULTS['soundEnabled']),
+			'toastEnabled' => $this->getSwitch($userId, 'notification_toast_enabled', self::DEFAULTS['toastEnabled']),
+			'soundNewMail' => $this->getSwitch($userId, 'notification_sound_new_mail', self::DEFAULTS['soundNewMail']),
+			'soundSendSuccess' => $this->getSwitch($userId, 'notification_sound_send_success', self::DEFAULTS['soundSendSuccess']),
+			'soundSendFail' => $this->getSwitch($userId, 'notification_sound_send_fail', self::DEFAULTS['soundSendFail']),
 		];
 	}
 
 	public function updateUserSettings(string $userId, array $settings): array {
-		$normalized = [
-			'nativeNewMail' => (bool)($settings['nativeNewMail'] ?? self::DEFAULTS['nativeNewMail']),
-			'soundEnabled' => (bool)($settings['soundEnabled'] ?? self::DEFAULTS['soundEnabled']),
-			'toastEnabled' => (bool)($settings['toastEnabled'] ?? self::DEFAULTS['toastEnabled']),
-			'soundNewMail' => (bool)($settings['soundNewMail'] ?? self::DEFAULTS['soundNewMail']),
-			'soundSendSuccess' => (bool)($settings['soundSendSuccess'] ?? self::DEFAULTS['soundSendSuccess']),
-			'soundSendFail' => (bool)($settings['soundSendFail'] ?? self::DEFAULTS['soundSendFail']),
+		$values = [
+			'nativeNewMail' => $this->readSwitchValue($settings, 'nativeNewMail', self::DEFAULTS['nativeNewMail']),
+			'soundEnabled' => $this->readSwitchValue($settings, 'soundEnabled', self::DEFAULTS['soundEnabled']),
+			'toastEnabled' => $this->readSwitchValue($settings, 'toastEnabled', self::DEFAULTS['toastEnabled']),
+			'soundNewMail' => $this->readSwitchValue($settings, 'soundNewMail', self::DEFAULTS['soundNewMail']),
+			'soundSendSuccess' => $this->readSwitchValue($settings, 'soundSendSuccess', self::DEFAULTS['soundSendSuccess']),
+			'soundSendFail' => $this->readSwitchValue($settings, 'soundSendFail', self::DEFAULTS['soundSendFail']),
 		];
 
-		$this->setBool($userId, 'notification_native_new_mail', $normalized['nativeNewMail']);
-		$this->setBool($userId, 'notification_sound_enabled', $normalized['soundEnabled']);
-		$this->setBool($userId, 'notification_toast_enabled', $normalized['toastEnabled']);
-		$this->setBool($userId, 'notification_sound_new_mail', $normalized['soundNewMail']);
-		$this->setBool($userId, 'notification_sound_send_success', $normalized['soundSendSuccess']);
-		$this->setBool($userId, 'notification_sound_send_fail', $normalized['soundSendFail']);
+		$this->config->setUserValue($userId, Application::APP_ID, 'notification_native_new_mail', $values['nativeNewMail']);
+		$this->config->setUserValue($userId, Application::APP_ID, 'notification_sound_enabled', $values['soundEnabled']);
+		$this->config->setUserValue($userId, Application::APP_ID, 'notification_toast_enabled', $values['toastEnabled']);
+		$this->config->setUserValue($userId, Application::APP_ID, 'notification_sound_new_mail', $values['soundNewMail']);
+		$this->config->setUserValue($userId, Application::APP_ID, 'notification_sound_send_success', $values['soundSendSuccess']);
+		$this->config->setUserValue($userId, Application::APP_ID, 'notification_sound_send_fail', $values['soundSendFail']);
 
-		return $normalized;
+		return $this->getUserSettings($userId);
 	}
 
 	public function getAudioUrls(): array {
@@ -68,12 +68,11 @@ class NotificationSettingsService {
 		];
 	}
 
-	private function getBool(string $userId, string $key, bool $default): bool {
-		$fallback = $default ? 'yes' : 'no';
-		return $this->config->getUserValue($userId, Application::APP_ID, $key, $fallback) === 'yes';
+	private function getSwitch(string $userId, string $key, string $default): bool {
+		return $this->config->getUserValue($userId, Application::APP_ID, $key, $default) !== 'no';
 	}
 
-	private function setBool(string $userId, string $key, bool $value): void {
-		$this->config->setUserValue($userId, Application::APP_ID, $key, $value ? 'yes' : 'no');
+	private function readSwitchValue(array $settings, string $key, string $default): string {
+		return ($settings[$key] ?? $default) === 'no' ? 'no' : 'yes';
 	}
 }

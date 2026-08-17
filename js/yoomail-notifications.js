@@ -4,7 +4,7 @@
 	function init() {
 		const appId = 'yoomail'
 		const stateLoader = window.OCP?.InitialState
-		const settings = stateLoader?.loadState?.(appId, 'notification-settings', null) || null
+		let settings = stateLoader?.loadState?.(appId, 'notification-settings', null) || null
 		const audioUrls = stateLoader?.loadState?.(appId, 'notification-audio-urls', {}) || {}
 
 		if (!settings || !document.body) {
@@ -17,6 +17,33 @@
 
 		const audioCache = {}
 		const recentMessageIds = new Map()
+
+		function applySettings(nextSettings) {
+			if (nextSettings && typeof nextSettings === 'object') {
+				settings = Object.assign({}, settings, nextSettings)
+			}
+		}
+
+		function refreshSettings() {
+			if (typeof fetch !== 'function') {
+				return
+			}
+
+			fetch(OC.generateUrl(`/apps/${appId}/api/settings/notifications`), {
+				method: 'GET',
+				headers: {
+					'Accept': 'application/json',
+				},
+				credentials: 'same-origin',
+			}).then(function(response) {
+				if (!response.ok) {
+					return null
+				}
+				return response.json()
+			}).then(function(nextSettings) {
+				applySettings(nextSettings)
+			}).catch(function() {})
+		}
 
 		function tOrFallback(text, replacements) {
 			try {
@@ -393,10 +420,23 @@
 
 		window.addEventListener('pointerdown', unlockAudio, { once: true })
 		window.addEventListener('keydown', unlockAudio, { once: true })
+		window.addEventListener('storage', function(event) {
+			if (event.key !== 'yoomail-notification-settings-updated' || !event.newValue) {
+				return
+			}
+
+			try {
+				const payload = JSON.parse(event.newValue)
+				applySettings(payload?.settings)
+			} catch (error) {
+			}
+		})
 		window.addEventListener('yoomail:new-mail', function(event) {
 			handleNewMail(event.detail)
 		})
 
+		refreshSettings()
+		window.setInterval(refreshSettings, 15000)
 		patchFetch()
 		patchXhr()
 	}
