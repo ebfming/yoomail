@@ -100,11 +100,11 @@
 			OC.Notification.showTemporary(t(appId, 'YooMail notification settings saved'))
 		}
 
-		async function requestPermission() {
-			if (!('Notification' in window)) {
-				OC.Notification.showTemporary(t(appId, 'This browser does not support native notifications.'))
-				return
-			}
+			async function requestPermission() {
+				if (!('Notification' in window)) {
+					OC.Notification.showTemporary(t(appId, 'This browser does not support native notifications.'))
+					return
+				}
 
 			if (Notification.permission === 'granted') {
 				updatePermissionStatus()
@@ -132,14 +132,62 @@
 				OC.Notification.showTemporary(t(appId, 'Browser notification permission was not changed'))
 			} catch (error) {
 				OC.Notification.showTemporary(t(appId, 'Failed to request browser notification permission'))
+				}
 			}
-		}
 
-		async function testSound(kind) {
-			const url = audioUrls[kind]
-			if (!url) {
-				return
+			function getSoundInputs() {
+				return {
+					parent: root.querySelector('#ym-sound-enabled'),
+					children: [
+						root.querySelector('#ym-sound-new-mail'),
+						root.querySelector('#ym-sound-send-success'),
+						root.querySelector('#ym-sound-send-fail'),
+					].filter(Boolean),
+				}
 			}
+
+			function updateSoundParentFromChildren() {
+				const inputs = getSoundInputs()
+				if (!inputs.parent) {
+					return
+				}
+
+				inputs.parent.checked = inputs.children.some(function(input) {
+					return input.checked
+				})
+			}
+
+			function updateSoundChildrenFromParent() {
+				const inputs = getSoundInputs()
+				if (!inputs.parent) {
+					return
+				}
+
+				inputs.children.forEach(function(input) {
+					input.checked = inputs.parent.checked
+				})
+			}
+
+			function normalizeInitialSoundState() {
+				const inputs = getSoundInputs()
+				if (!inputs.parent) {
+					return
+				}
+
+				if (inputs.parent.checked && inputs.children.every(function(input) { return !input.checked })) {
+					inputs.children.forEach(function(input) {
+						input.checked = true
+					})
+				}
+
+				updateSoundParentFromChildren()
+			}
+
+			async function testSound(kind) {
+				const url = audioUrls[kind]
+				if (!url) {
+					return
+				}
 
 			try {
 				const audio = new Audio(url)
@@ -151,18 +199,23 @@
 			}
 		}
 
-		root.querySelector('#ym-save-notification-settings')?.addEventListener('click', function() {
-			saveSettings().catch(function(error) {
-				OC.Notification.showTemporary(error.message || t(appId, 'Could not save YooMail notification settings'))
+			root.querySelector('#ym-save-notification-settings')?.addEventListener('click', function() {
+				saveSettings().catch(function(error) {
+					OC.Notification.showTemporary(error.message || t(appId, 'Could not save YooMail notification settings'))
+				})
 			})
-		})
-		root.querySelector('#ym-request-notification-permission')?.addEventListener('click', requestPermission)
-		root.querySelector('#ym-test-new-mail-sound')?.addEventListener('click', function() { testSound('newMail') })
-		root.querySelector('#ym-test-send-success-sound')?.addEventListener('click', function() { testSound('sendSuccess') })
-		root.querySelector('#ym-test-send-fail-sound')?.addEventListener('click', function() { testSound('sendFail') })
+			root.querySelector('#ym-request-notification-permission')?.addEventListener('click', requestPermission)
+			root.querySelector('#ym-sound-enabled')?.addEventListener('change', updateSoundChildrenFromParent)
+			getSoundInputs().children.forEach(function(input) {
+				input.addEventListener('change', updateSoundParentFromChildren)
+			})
+			root.querySelector('#ym-test-new-mail-sound')?.addEventListener('click', function() { testSound('newMail') })
+			root.querySelector('#ym-test-send-success-sound')?.addEventListener('click', function() { testSound('sendSuccess') })
+			root.querySelector('#ym-test-send-fail-sound')?.addEventListener('click', function() { testSound('sendFail') })
 
-		updatePermissionStatus()
-	}
+			normalizeInitialSoundState()
+			updatePermissionStatus()
+		}
 
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', init, { once: true })

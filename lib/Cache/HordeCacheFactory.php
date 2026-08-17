@@ -12,12 +12,14 @@ namespace OCA\YooMail\Cache;
 use OCA\YooMail\Account;
 use OCA\YooMail\Db\MailboxMapper;
 use OCA\YooMail\Db\MessageMapper;
+use OCP\IConfig;
 
 class HordeCacheFactory {
 	public function __construct(
 		private MailboxMapper $mailboxMapper,
 		private MessageMapper $messageMapper,
 		private HordeSyncTokenParser $syncTokenParser,
+		private IConfig $config,
 	) {
 	}
 
@@ -27,6 +29,7 @@ class HordeCacheFactory {
 			$this->mailboxMapper,
 			$this->syncTokenParser,
 			$account,
+			$this->config,
 		);
 	}
 }

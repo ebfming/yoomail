@@ -15,6 +15,7 @@ use Horde_Imap_Client_Exception_NoSupportExtension;
 use Horde_Imap_Client_Socket;
 use Horde_Mime_Exception;
 use OCA\YooMail\Account;
+use OCA\YooMail\AppInfo\Application;
 use OCA\YooMail\Attachment;
 use OCA\YooMail\Contracts\IMailManager;
 use OCA\YooMail\Db\Mailbox;
@@ -41,6 +42,7 @@ use OCA\YooMail\IMAP\MessageMapper as ImapMessageMapper;
 use OCA\YooMail\Model\IMAPMessage;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\EventDispatcher\IEventDispatcher;
+use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 use function array_map;
 use function array_values;
@@ -103,6 +105,7 @@ class MailManager implements IMailManager {
 		TagMapper $tagMapper,
 		MessageTagsMapper $messageTagsMapper,
 		ThreadMapper $threadMapper,
+		private IConfig $config,
 		private ImapFlag $imapFlag,
 	) {
 		$this->imapClientFactory = $imapClientFactory;
@@ -315,6 +318,11 @@ class MailManager implements IMailManager {
 			throw new ServiceException("Source mailbox $mailboxId does not exist", 0, $e);
 		}
 
+		if (!$this->shouldSyncLocalDeleteToServer()) {
+			$this->deleteLocalMessageOnly($account, $sourceMailbox, $messageUid);
+			return;
+		}
+
 		$client = $this->imapClientFactory->getClient($account);
 		try {
 			$this->deleteMessageWithClient($account, $sourceMailbox, $messageUid, $client);
@@ -337,6 +345,11 @@ class MailManager implements IMailManager {
 		int $messageUid,
 		Horde_Imap_Client_Socket $client,
 	): void {
+		if (!$this->shouldSyncLocalDeleteToServer()) {
+			$this->deleteLocalMessageOnly($account, $mailbox, $messageUid);
+			return;
+		}
+
 		$this->eventDispatcher->dispatchTyped(
 			new BeforeMessageDeletedEvent($account, $mailbox->getName(), $messageUid)
 		);
@@ -366,6 +379,22 @@ class MailManager implements IMailManager {
 				$trashMailbox->getName()
 			);
 		}
+
+		$this->eventDispatcher->dispatchTyped(
+			new MessageDeletedEvent($account, $mailbox, $messageUid)
+		);
+	}
+
+	private function shouldSyncLocalDeleteToServer(): bool {
+		return $this->config->getAppValue(Application::APP_ID, 'delete_sync_local_to_server', 'yes') === 'yes';
+	}
+
+	private function deleteLocalMessageOnly(Account $account, Mailbox $mailbox, int $messageUid): void {
+		$this->logger->info('Skipping remote delete because local-to-server delete sync is disabled', [
+			'accountId' => $account->getId(),
+			'mailboxId' => $mailbox->getId(),
+			'messageUid' => $messageUid,
+		]);
 
 		$this->eventDispatcher->dispatchTyped(
 			new MessageDeletedEvent($account, $mailbox, $messageUid)

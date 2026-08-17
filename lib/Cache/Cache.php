@@ -12,8 +12,10 @@ namespace OCA\YooMail\Cache;
 
 use Horde_Imap_Client_Cache_Backend;
 use OCA\YooMail\Account;
+use OCA\YooMail\AppInfo\Application;
 use OCA\YooMail\Db\MailboxMapper;
 use OCA\YooMail\Db\MessageMapper;
+use OCP\IConfig;
 
 /**
  * This class passes the minimum amount of data from the db cache to Horde to make QRESYNC work
@@ -28,6 +30,7 @@ class Cache extends Horde_Imap_Client_Cache_Backend {
 		private MailboxMapper $mailboxMapper,
 		private HordeSyncTokenParser $syncTokenParser,
 		private Account $account,
+		private IConfig $config,
 	) {
 		parent::__construct();
 	}
@@ -127,8 +130,10 @@ class Cache extends Horde_Imap_Client_Cache_Backend {
 	 */
 	#[\Override]
 	public function deleteMsgs($mailbox, $uids) {
-		$mailboxEntity = $this->mailboxMapper->find($this->account, $mailbox);
-		$this->dbMessageMapper->deleteByUid($mailboxEntity, ...$uids);
+		if ($this->config->getAppValue(Application::APP_ID, 'delete_sync_server_to_local', 'yes') === 'yes') {
+			$mailboxEntity = $this->mailboxMapper->find($this->account, $mailbox);
+			$this->dbMessageMapper->deleteByUid($mailboxEntity, ...$uids);
+		}
 
 		if (!isset($this->cachedMailboxes[$mailbox])) {
 			return;

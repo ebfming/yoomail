@@ -175,6 +175,18 @@
 	}
 
 	function parseRequestBody(body) {
+		if (body && typeof FormData !== 'undefined' && body instanceof FormData) {
+			return Object.fromEntries(body.entries())
+		}
+
+		if (body && typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) {
+			return Object.fromEntries(body.entries())
+		}
+
+		if (body && typeof body === 'object') {
+			return body
+		}
+
 		if (typeof body !== 'string') {
 			return null
 		}
@@ -186,22 +198,30 @@
 		}
 	}
 
+	function readRequestSubject(body) {
+		const parsedBody = parseRequestBody(body)
+		return parsedBody?.subject || parsedBody?.data?.subject || ''
+	}
+
 		function detectTrackedRequest(method, url, body) {
 			const normalizedMethod = String(method || 'GET').toUpperCase()
 			const normalizedUrl = String(url || '')
-			const parsedBody = parseRequestBody(body)
+			const subject = readRequestSubject(body)
 
-		if (normalizedMethod === 'POST' && /\/apps\/yoomail\/api\/messages(?:\?|$)/.test(normalizedUrl)) {
+		if (normalizedMethod === 'POST' && (
+			/\/apps\/yoomail\/api\/messages(?:\?|$)/.test(normalizedUrl)
+			|| /\/(?:ocs\/v\d+\.php\/)?apps\/(?:yoomail|mail)\/(?:api\/v\d+\/)?message\/send(?:\?|$)/.test(normalizedUrl)
+		)) {
 			return {
 				type: 'send',
-				subject: parsedBody?.subject || '',
+				subject: subject,
 			}
 		}
 
 			if (normalizedMethod === 'POST' && /\/apps\/yoomail\/api\/outbox\/\d+(?:\?|$)/.test(normalizedUrl)) {
 				return {
 					type: 'outbox-send',
-					subject: parsedBody?.subject || '',
+					subject: subject,
 				}
 			}
 
@@ -333,37 +353,42 @@
 				flex-direction: column;
 				gap: 12px;
 				pointer-events: none;
-			}
-			.yoomail-notification-toast {
-				width: min(360px, calc(100vw - 32px));
-				padding: 14px 16px;
-				border: 1px solid rgba(0, 0, 0, 0.08);
-				border-radius: 14px;
-				background: rgba(20, 24, 33, 0.95);
-				color: #fff;
-				text-align: left;
-				box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
-				transform: translateY(12px);
-				opacity: 0;
-				transition: transform 160ms ease, opacity 160ms ease;
-				pointer-events: auto;
-				cursor: pointer;
-			}
-			.yoomail-notification-toast--visible {
-				transform: translateY(0);
-				opacity: 1;
-			}
-			.yoomail-notification-toast__title {
-				font-size: 14px;
-				font-weight: 700;
-				margin-bottom: 4px;
-			}
-			.yoomail-notification-toast__body {
-				font-size: 13px;
-				line-height: 1.45;
-				color: rgba(255, 255, 255, 0.88);
-			}
-		</style>
+				}
+				.yoomail-notification-toast {
+					position: relative;
+					width: min(400px, calc(100vw - 32px));
+					padding: 16px 18px 16px 20px;
+					border: 1px solid var(--color-border);
+					border-inline-start: 4px solid var(--color-primary-element);
+					border-radius: var(--border-radius-large, 14px);
+					background: var(--color-main-background);
+					color: var(--color-main-text);
+					text-align: left;
+					box-shadow: 0 16px 44px rgba(0, 0, 0, 0.22);
+					transform: translateY(12px);
+					opacity: 0;
+					transition: transform 160ms ease, opacity 160ms ease;
+					pointer-events: auto;
+					cursor: pointer;
+					overflow: hidden;
+				}
+				.yoomail-notification-toast--visible {
+					transform: translateY(0);
+					opacity: 1;
+				}
+				.yoomail-notification-toast__title {
+					color: var(--color-main-text);
+					font-size: 15px;
+					font-weight: 700;
+					line-height: 1.35;
+					margin-bottom: 6px;
+				}
+				.yoomail-notification-toast__body {
+					color: var(--color-main-text);
+					font-size: 14px;
+					line-height: 1.5;
+				}
+			</style>
 	`
 
 		window.addEventListener('pointerdown', unlockAudio, { once: true })

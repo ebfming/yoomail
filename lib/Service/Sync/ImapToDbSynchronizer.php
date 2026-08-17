@@ -14,6 +14,7 @@ use Horde_Imap_Client_Base;
 use Horde_Imap_Client_Exception;
 use Horde_Imap_Client_Ids;
 use OCA\YooMail\Account;
+use OCA\YooMail\AppInfo\Application;
 use OCA\YooMail\Contracts\IMailManager;
 use OCA\YooMail\Db\Mailbox;
 use OCA\YooMail\Service\MessageBodyStorage;
@@ -611,10 +612,21 @@ class ImapToDbSynchronizer {
 				Horde_Imap_Client::SYNC_VANISHEDUIDS,
 			);
 			$perf->step('get vanished messages via Horde');
-			$vanishedMessageIds = $this->dbMapper->findIdsForUids($mailbox, $response->getVanishedMessageUids());
+			$vanishedUids = $response->getVanishedMessageUids();
 
-			foreach (array_chunk($response->getVanishedMessageUids(), 500) as $chunk) {
-				$this->dbMapper->deleteByUid($mailbox, ...$chunk);
+			if ($this->shouldSyncServerDeleteToLocal()) {
+				$vanishedMessageIds = $this->dbMapper->findIdsForUids($mailbox, $vanishedUids);
+				foreach (array_chunk($vanishedUids, 500) as $chunk) {
+					$this->dbMapper->deleteByUid($mailbox, ...$chunk);
+				}
+				$newOrVanished = $newOrVanished || !empty($vanishedUids);
+			} elseif (!empty($vanishedUids)) {
+				$this->logger->info('Skipping local delete because server-to-local delete sync is disabled', [
+					'accountId' => $account->getId(),
+					'mailboxId' => $mailbox->getId(),
+					'mailboxName' => $mailbox->getName(),
+					'count' => count($vanishedUids),
+				]);
 			}
 			$perf->step('delete vanished messages');
 
@@ -625,7 +637,6 @@ class ImapToDbSynchronizer {
 			if ($knownUids === null) {
 				$mailbox->setSyncVanishedToken($client->getSyncToken($mailbox->getName()));
 			}
-			$newOrVanished = $newOrVanished || !empty($response->getVanishedMessageUids());
 		}
 		$this->mailboxMapper->update($mailbox);
 		$perf->end();
@@ -649,6 +660,15 @@ class ImapToDbSynchronizer {
 		Mailbox $mailbox,
 		LoggerInterface $logger,
 	): void {
+		if (!$this->shouldSyncServerDeleteToLocal()) {
+			$logger->info('Skipping repair sync because server-to-local delete sync is disabled', [
+				'accountId' => $account->getId(),
+				'mailboxId' => $mailbox->getId(),
+				'mailboxName' => $mailbox->getName(),
+			]);
+			return;
+		}
+
 		$this->mailboxMapper->lockForVanishedSync($mailbox);
 
 		$perf = $this->performanceLogger->startWithLogger(
@@ -681,5 +701,9 @@ class ImapToDbSynchronizer {
 		}
 
 		$perf->end();
+	}
+
+	private function shouldSyncServerDeleteToLocal(): bool {
+		return $this->config->getAppValue(Application::APP_ID, 'delete_sync_server_to_local', 'yes') === 'yes';
 	}
 }
