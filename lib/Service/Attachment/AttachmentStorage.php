@@ -119,4 +119,14 @@ class AttachmentStorage {
 		}
 		$file->delete();
 	}
+
+	public function getSize(string $userId, int $attachmentId): int {
+		try {
+			$file = $this->retrieve($userId, $attachmentId);
+			$size = $file->getSize();
+			return $size === null ? 0 : (int)$size;
+		} catch (AttachmentNotFoundException) {
+			return 0;
+		}
+	}
 }

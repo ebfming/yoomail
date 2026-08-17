@@ -46,6 +46,21 @@
 		.replaceAll('"', '&quot;')
 
 	const checked = (value) => value ? 'checked' : ''
+	const normalizeSettings = (settings) => ({
+		...settings,
+		timeFormatDefault: String(settings?.timeFormatDefault ?? '24'),
+		realtimeMode: String(settings?.realtimeMode ?? 'websocket'),
+		fetchRangeDays: String(settings?.fetchRangeDays ?? '30'),
+		deleteSyncLocalToServer: Boolean(settings?.deleteSyncLocalToServer),
+		deleteSyncServerToLocal: Boolean(settings?.deleteSyncServerToLocal),
+		bodyCacheCleanupEnabled: Boolean(settings?.bodyCacheCleanupEnabled),
+		bodyCacheCleanupDays: Number(settings?.bodyCacheCleanupDays ?? 30),
+		bodyCacheCleanupSizeMb: Number(settings?.bodyCacheCleanupSizeMb ?? 1024),
+		localAttachmentCleanupEnabled: Boolean(settings?.localAttachmentCleanupEnabled),
+		localAttachmentCleanupDays: Number(settings?.localAttachmentCleanupDays ?? 30),
+		localAttachmentCleanupSizeMb: Number(settings?.localAttachmentCleanupSizeMb ?? 512),
+	})
+
 	const render = () => {
 		const settings = state.settings
 		if (!settings) {
@@ -116,6 +131,61 @@
 					</p>
 					<p class="settings-hint ym-admin-indented">${escapeHtml(t(appId, 'When enabled, deletions detected from the mail server are also removed from YooMail local data during sync.'))}</p>
 				</div>
+
+				<div class="ym-admin-card">
+					<h3>${escapeHtml(t(appId, 'Fetch range default'))}</h3>
+					<p class="settings-hint">${escapeHtml(t(appId, 'This value is used as the default scope for first-time or rebuilt mailbox sync. It does not delete existing local mail.'))}</p>
+					<p class="ym-admin-control-row">
+						<input type="radio" class="radio" id="ym-fetch-range-7" name="ym-fetch-range-days" value="7" ${checked(settings.fetchRangeDays === '7')}>
+						<label for="ym-fetch-range-7">${escapeHtml(t(appId, 'Last 7 days'))}</label>
+					</p>
+					<p class="ym-admin-control-row">
+						<input type="radio" class="radio" id="ym-fetch-range-30" name="ym-fetch-range-days" value="30" ${checked(settings.fetchRangeDays === '30')}>
+						<label for="ym-fetch-range-30">${escapeHtml(t(appId, 'Last 30 days'))}</label>
+					</p>
+					<p class="ym-admin-control-row">
+						<input type="radio" class="radio" id="ym-fetch-range-90" name="ym-fetch-range-days" value="90" ${checked(settings.fetchRangeDays === '90')}>
+						<label for="ym-fetch-range-90">${escapeHtml(t(appId, 'Last 90 days'))}</label>
+					</p>
+					<p class="ym-admin-control-row">
+						<input type="radio" class="radio" id="ym-fetch-range-180" name="ym-fetch-range-days" value="180" ${checked(settings.fetchRangeDays === '180')}>
+						<label for="ym-fetch-range-180">${escapeHtml(t(appId, 'Last 180 days'))}</label>
+					</p>
+					<p class="ym-admin-control-row">
+						<input type="radio" class="radio" id="ym-fetch-range-all" name="ym-fetch-range-days" value="all" ${checked(settings.fetchRangeDays === 'all')}>
+						<label for="ym-fetch-range-all">${escapeHtml(t(appId, 'Fetch all mail'))}</label>
+					</p>
+				</div>
+
+				<div class="ym-admin-card">
+					<h3>${escapeHtml(t(appId, 'Message body cache cleanup'))}</h3>
+					<p class="ym-admin-control-row">
+						<input type="checkbox" class="checkbox" id="ym-body-cache-cleanup-enabled" ${checked(settings.bodyCacheCleanupEnabled)}>
+						<label for="ym-body-cache-cleanup-enabled">${escapeHtml(t(appId, 'Enable automatic cleanup for cached message bodies'))}</label>
+					</p>
+					<p class="settings-hint ym-admin-indented">${escapeHtml(t(appId, 'Cached message bodies are stored in Nextcloud appdata and are trimmed by age first, then by total size.'))}</p>
+					<div class="ym-admin-inline-fields">
+						<label for="ym-body-cache-cleanup-days">${escapeHtml(t(appId, 'Keep for days'))}</label>
+						<input type="number" min="1" step="1" id="ym-body-cache-cleanup-days" value="${escapeHtml(settings.bodyCacheCleanupDays)}">
+						<label for="ym-body-cache-cleanup-size">${escapeHtml(t(appId, 'Max size (MB)'))}</label>
+						<input type="number" min="1" step="1" id="ym-body-cache-cleanup-size" value="${escapeHtml(settings.bodyCacheCleanupSizeMb)}">
+					</div>
+				</div>
+
+				<div class="ym-admin-card">
+					<h3>${escapeHtml(t(appId, 'Local attachment cleanup'))}</h3>
+					<p class="ym-admin-control-row">
+						<input type="checkbox" class="checkbox" id="ym-local-attachment-cleanup-enabled" ${checked(settings.localAttachmentCleanupEnabled)}>
+						<label for="ym-local-attachment-cleanup-enabled">${escapeHtml(t(appId, 'Enable automatic cleanup for local draft attachments'))}</label>
+					</p>
+					<p class="settings-hint ym-admin-indented">${escapeHtml(t(appId, 'This cleanup only removes unattached local files. Attachments still linked to drafts or outbox messages are kept untouched.'))}</p>
+					<div class="ym-admin-inline-fields">
+						<label for="ym-local-attachment-cleanup-days">${escapeHtml(t(appId, 'Keep for days'))}</label>
+						<input type="number" min="1" step="1" id="ym-local-attachment-cleanup-days" value="${escapeHtml(settings.localAttachmentCleanupDays)}">
+						<label for="ym-local-attachment-cleanup-size">${escapeHtml(t(appId, 'Max size (MB)'))}</label>
+						<input type="number" min="1" step="1" id="ym-local-attachment-cleanup-size" value="${escapeHtml(settings.localAttachmentCleanupSizeMb)}">
+					</div>
+				</div>
 				</div>
 				<div class="ym-admin-actions">
 					<button type="button" class="primary" id="ym-save-basic-settings" ${state.saving ? 'disabled' : ''}>${escapeHtml(state.saving ? t(appId, 'Save') + '...' : t(appId, 'Save'))}</button>
@@ -132,10 +202,17 @@
 		realtimeMode: root.querySelector('input[name="ym-realtime-mode"]:checked')?.value || 'websocket',
 		deleteSyncLocalToServer: Boolean(root.querySelector('#ym-delete-local-sync')?.checked),
 		deleteSyncServerToLocal: Boolean(root.querySelector('#ym-delete-server-sync')?.checked),
+		fetchRangeDays: root.querySelector('input[name="ym-fetch-range-days"]:checked')?.value || '30',
+		bodyCacheCleanupEnabled: Boolean(root.querySelector('#ym-body-cache-cleanup-enabled')?.checked),
+		bodyCacheCleanupDays: Number(root.querySelector('#ym-body-cache-cleanup-days')?.value || 30),
+		bodyCacheCleanupSizeMb: Number(root.querySelector('#ym-body-cache-cleanup-size')?.value || 1024),
+		localAttachmentCleanupEnabled: Boolean(root.querySelector('#ym-local-attachment-cleanup-enabled')?.checked),
+		localAttachmentCleanupDays: Number(root.querySelector('#ym-local-attachment-cleanup-days')?.value || 30),
+		localAttachmentCleanupSizeMb: Number(root.querySelector('#ym-local-attachment-cleanup-size')?.value || 512),
 	})
 
 	const loadSettings = async () => {
-		state.settings = await request('/api/settings/basic')
+		state.settings = normalizeSettings(await request('/api/settings/basic'))
 		render()
 	}
 
@@ -153,13 +230,14 @@
 	}
 
 	const saveSettings = async () => {
+		const nextSettings = collectSettings()
 		state.saving = true
 		render()
 		try {
-			state.settings = await request('/api/settings/basic', {
+			state.settings = normalizeSettings(await request('/api/settings/basic', {
 				method: 'PUT',
-				body: collectSettings(),
-			})
+				body: nextSettings,
+			}))
 			OC.Notification.showTemporary(t(appId, 'Admin settings saved'))
 			await checkHealth()
 		} catch (error) {

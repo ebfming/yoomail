@@ -41,6 +41,19 @@
 	margin-block-start: calc(var(--default-grid-baseline) * 6);
 }
 
+#yoomail-admin-basic-settings .ym-admin-inline-fields {
+	display: grid;
+	grid-template-columns: auto minmax(110px, 160px);
+	gap: calc(var(--default-grid-baseline) * 2) calc(var(--default-grid-baseline) * 3);
+	align-items: center;
+	margin-inline-start: calc(16px + var(--default-grid-baseline) * 2);
+	max-width: 420px;
+}
+
+#yoomail-admin-basic-settings .ym-admin-inline-fields input[type='number'] {
+	width: 100%;
+}
+
 #yoomail-admin-basic-settings .ym-admin-health {
 	margin-block-end: calc(var(--default-grid-baseline) * 3);
 	padding: calc(var(--default-grid-baseline) * 3);

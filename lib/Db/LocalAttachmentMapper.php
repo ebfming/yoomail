@@ -125,4 +125,25 @@ class LocalAttachmentMapper extends QBMapper {
 			);
 		return $this->findEntities($qb);
 	}
+
+	/**
+	 * @return LocalAttachment[]
+	 * @throws \OCP\DB\Exception
+	 */
+	public function findUnattached(?int $createdBefore = null): array {
+		$qb = $this->db->getQueryBuilder();
+		$qb->select('*')
+			->from($this->getTableName())
+			->where($qb->expr()->isNull('local_message_id'))
+			->orderBy('created_at', 'ASC')
+			->addOrderBy('id', 'ASC');
+
+		if ($createdBefore !== null) {
+			$qb->andWhere(
+				$qb->expr()->lt('created_at', $qb->createNamedParameter($createdBefore, IQueryBuilder::PARAM_INT))
+			);
+		}
+
+		return $this->findEntities($qb);
+	}
 }

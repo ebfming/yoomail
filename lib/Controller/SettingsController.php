@@ -33,6 +33,7 @@ use function preg_match;
 class SettingsController extends Controller {
 	private const TIME_FORMATS = ['12', '24'];
 	private const REALTIME_MODES = ['websocket', 'http'];
+	private const FETCH_RANGE_OPTIONS = ['7', '30', '90', '180', 'all'];
 
 	private ProvisioningManager $provisioningManager;
 	private AntiSpamService $antiSpamService;
@@ -141,11 +142,19 @@ class SettingsController extends Controller {
 	}
 
 	public function updateBasicSettings(
-		string $timeFormatDefault,
-		string $realtimeMode,
-		bool $deleteSyncLocalToServer,
-		bool $deleteSyncServerToLocal,
 	): JSONResponse {
+		$timeFormatDefault = (string)$this->request->getParam('timeFormatDefault', '24');
+		$realtimeMode = (string)$this->request->getParam('realtimeMode', 'websocket');
+		$deleteSyncLocalToServer = $this->toBool($this->request->getParam('deleteSyncLocalToServer', true));
+		$deleteSyncServerToLocal = $this->toBool($this->request->getParam('deleteSyncServerToLocal', true));
+		$fetchRangeDays = (string)$this->request->getParam('fetchRangeDays', '30');
+		$bodyCacheCleanupEnabled = $this->toBool($this->request->getParam('bodyCacheCleanupEnabled', true));
+		$bodyCacheCleanupDays = (int)$this->request->getParam('bodyCacheCleanupDays', 30);
+		$bodyCacheCleanupSizeMb = (int)$this->request->getParam('bodyCacheCleanupSizeMb', 1024);
+		$localAttachmentCleanupEnabled = $this->toBool($this->request->getParam('localAttachmentCleanupEnabled', true));
+		$localAttachmentCleanupDays = (int)$this->request->getParam('localAttachmentCleanupDays', 30);
+		$localAttachmentCleanupSizeMb = (int)$this->request->getParam('localAttachmentCleanupSizeMb', 512);
+
 		if (!in_array($timeFormatDefault, self::TIME_FORMATS, true)) {
 			return HttpJsonResponse::fail([$this->l10n->t('Unsupported time format')], 400);
 		}
@@ -154,10 +163,25 @@ class SettingsController extends Controller {
 			return HttpJsonResponse::fail([$this->l10n->t('Unsupported mail sync mode')], 400);
 		}
 
+		if (!in_array($fetchRangeDays, self::FETCH_RANGE_OPTIONS, true)) {
+			return HttpJsonResponse::fail([$this->l10n->t('Unsupported fetch range')], 400);
+		}
+
+		if ($bodyCacheCleanupDays <= 0 || $bodyCacheCleanupSizeMb <= 0 || $localAttachmentCleanupDays <= 0 || $localAttachmentCleanupSizeMb <= 0) {
+			return HttpJsonResponse::fail([$this->l10n->t('Cleanup values must be positive numbers')], 400);
+		}
+
 		$this->config->setAppValue(Application::APP_ID, 'time_format_default', $timeFormatDefault);
 		$this->config->setAppValue(Application::APP_ID, 'realtime_mode', $realtimeMode);
 		$this->config->setAppValue(Application::APP_ID, 'delete_sync_local_to_server', $deleteSyncLocalToServer ? 'yes' : 'no');
 		$this->config->setAppValue(Application::APP_ID, 'delete_sync_server_to_local', $deleteSyncServerToLocal ? 'yes' : 'no');
+		$this->config->setAppValue(Application::APP_ID, 'fetch_range_days', $fetchRangeDays);
+		$this->config->setAppValue(Application::APP_ID, 'body_cache_cleanup_enabled', $bodyCacheCleanupEnabled ? 'yes' : 'no');
+		$this->config->setAppValue(Application::APP_ID, 'body_cache_cleanup_days', (string)$bodyCacheCleanupDays);
+		$this->config->setAppValue(Application::APP_ID, 'body_cache_cleanup_size_mb', (string)$bodyCacheCleanupSizeMb);
+		$this->config->setAppValue(Application::APP_ID, 'local_attachment_cleanup_enabled', $localAttachmentCleanupEnabled ? 'yes' : 'no');
+		$this->config->setAppValue(Application::APP_ID, 'local_attachment_cleanup_days', (string)$localAttachmentCleanupDays);
+		$this->config->setAppValue(Application::APP_ID, 'local_attachment_cleanup_size_mb', (string)$localAttachmentCleanupSizeMb);
 
 		return new JSONResponse($this->readBasicSettings());
 	}
@@ -212,6 +236,13 @@ class SettingsController extends Controller {
 			'realtimeMode' => $this->config->getAppValue(Application::APP_ID, 'realtime_mode', 'websocket'),
 			'deleteSyncLocalToServer' => $this->config->getAppValue(Application::APP_ID, 'delete_sync_local_to_server', 'yes') === 'yes',
 			'deleteSyncServerToLocal' => $this->config->getAppValue(Application::APP_ID, 'delete_sync_server_to_local', 'yes') === 'yes',
+			'fetchRangeDays' => $this->config->getAppValue(Application::APP_ID, 'fetch_range_days', '30'),
+			'bodyCacheCleanupEnabled' => $this->config->getAppValue(Application::APP_ID, 'body_cache_cleanup_enabled', 'yes') === 'yes',
+			'bodyCacheCleanupDays' => (int)$this->config->getAppValue(Application::APP_ID, 'body_cache_cleanup_days', '30'),
+			'bodyCacheCleanupSizeMb' => (int)$this->config->getAppValue(Application::APP_ID, 'body_cache_cleanup_size_mb', '1024'),
+			'localAttachmentCleanupEnabled' => $this->config->getAppValue(Application::APP_ID, 'local_attachment_cleanup_enabled', 'yes') === 'yes',
+			'localAttachmentCleanupDays' => (int)$this->config->getAppValue(Application::APP_ID, 'local_attachment_cleanup_days', '30'),
+			'localAttachmentCleanupSizeMb' => (int)$this->config->getAppValue(Application::APP_ID, 'local_attachment_cleanup_size_mb', '512'),
 			'wsHost' => $this->config->getAppValue(Application::APP_ID, 'realtime_ws_host', '127.0.0.1'),
 			'wsPort' => (int)$this->config->getAppValue(Application::APP_ID, 'realtime_ws_port', '8789'),
 			'wsPublicUrl' => $this->config->getAppValue(Application::APP_ID, 'realtime_ws_public_url', ''),
@@ -228,6 +259,22 @@ class SettingsController extends Controller {
 
 		fclose($socket);
 		return true;
+	}
+
+	private function toBool(mixed $value): bool {
+		if (is_bool($value)) {
+			return $value;
+		}
+
+		if (is_string($value)) {
+			return in_array(strtolower($value), ['1', 'true', 'yes', 'on'], true);
+		}
+
+		if (is_int($value)) {
+			return $value === 1;
+		}
+
+		return false;
 	}
 
 	private function buildHealthSummary(string $status, string $mode, string $host, int $port): string {

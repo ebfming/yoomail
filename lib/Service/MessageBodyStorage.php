@@ -183,4 +183,89 @@ class MessageBodyStorage {
 			@rmdir($dir);
 		}
 	}
+
+	/**
+	 * @return array{deletedFiles:int, deletedBytes:int, remainingFiles:int, remainingBytes:int}
+	 */
+	public function cleanUp(int $maxAgeSeconds, int $maxTotalBytes): array {
+		$deletedFiles = 0;
+		$deletedBytes = 0;
+
+		$files = $this->collectCacheFiles();
+		$now = time();
+
+		foreach ($files as $file) {
+			if (($now - $file['mtime']) <= $maxAgeSeconds) {
+				continue;
+			}
+
+			if ($this->deleteCacheFile($file['path'])) {
+				$deletedFiles++;
+				$deletedBytes += $file['size'];
+			}
+		}
+
+		$remaining = $this->collectCacheFiles();
+		$totalBytes = array_sum(array_column($remaining, 'size'));
+
+		if ($maxTotalBytes > 0 && $totalBytes > $maxTotalBytes) {
+			usort(
+				$remaining,
+				static fn (array $left, array $right): int => $left['mtime'] <=> $right['mtime']
+			);
+
+			foreach ($remaining as $file) {
+				if ($totalBytes <= $maxTotalBytes) {
+					break;
+				}
+
+				if ($this->deleteCacheFile($file['path'])) {
+					$deletedFiles++;
+					$deletedBytes += $file['size'];
+					$totalBytes -= $file['size'];
+				}
+			}
+		}
+
+		$finalFiles = $this->collectCacheFiles();
+
+		return [
+			'deletedFiles' => $deletedFiles,
+			'deletedBytes' => $deletedBytes,
+			'remainingFiles' => count($finalFiles),
+			'remainingBytes' => array_sum(array_column($finalFiles, 'size')),
+		];
+	}
+
+	/**
+	 * @return list<array{path:string,size:int,mtime:int}>
+	 */
+	private function collectCacheFiles(): array {
+		if (!is_dir($this->baseDir)) {
+			return [];
+		}
+
+		$files = [];
+		foreach (glob($this->baseDir . '/*', GLOB_ONLYDIR) ?: [] as $dir) {
+			foreach (glob($dir . '/*.json') ?: [] as $file) {
+				$size = @filesize($file);
+				$mtime = @filemtime($file);
+				$files[] = [
+					'path' => $file,
+					'size' => $size === false ? 0 : (int)$size,
+					'mtime' => $mtime === false ? 0 : (int)$mtime,
+				];
+			}
+		}
+
+		return $files;
+	}
+
+	private function deleteCacheFile(string $path): bool {
+		if (!is_file($path)) {
+			return false;
+		}
+
+		return @unlink($path);
+	}
 }

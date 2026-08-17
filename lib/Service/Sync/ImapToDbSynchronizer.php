@@ -39,6 +39,7 @@ use OCA\YooMail\Service\Classification\NewMessagesClassifier;
 use OCA\YooMail\Support\PerformanceLogger;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\EventDispatcher\IEventDispatcher;
+use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 use Throwable;
 use function array_chunk;
@@ -94,7 +95,8 @@ class ImapToDbSynchronizer {
 		IMailManager $mailManager,
 		TagMapper $tagMapper,
 		NewMessagesClassifier $newMessagesClassifier,
-		MessageBodyStorage $bodyStorage) {
+		MessageBodyStorage $bodyStorage,
+		private IConfig $config) {
 		$this->dbMapper = $dbMapper;
 		$this->clientFactory = $clientFactory;
 		$this->imapMapper = $imapMapper;
@@ -399,6 +401,7 @@ class ImapToDbSynchronizer {
 		$noCacheClient = $this->clientFactory->getClient($account, false);
 		try {
 			$highestKnownUid = $this->dbMapper->findHighestUid($mailbox);
+			$receivedSinceTimestamp = $this->resolveInitialFetchRangeTimestamp();
 			try {
 				$imapMessages = $this->imapMapper->findAll(
 					$noCacheClient,
@@ -408,6 +411,7 @@ class ImapToDbSynchronizer {
 					$logger,
 					$perf,
 					$account->getUserId(),
+					$receivedSinceTimestamp,
 				);
 				$perf->step(sprintf('fetch %d messages from IMAP', count($imapMessages)));
 			} catch (Horde_Imap_Client_Exception $e) {
@@ -448,6 +452,20 @@ class ImapToDbSynchronizer {
 		$this->mailboxMapper->update($mailbox);
 
 		$perf->end();
+	}
+
+	private function resolveInitialFetchRangeTimestamp(): ?int {
+		$range = $this->config->getAppValue('yoomail', 'fetch_range_days', '30');
+		if ($range === 'all') {
+			return null;
+		}
+
+		$days = (int)$range;
+		if ($days <= 0) {
+			return null;
+		}
+
+		return time() - ($days * 86400);
 	}
 
 	/**

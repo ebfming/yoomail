@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\YooMail\IMAP;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use Horde_Imap_Client;
 use Horde_Imap_Client_Base;
 use Horde_Imap_Client_Data_Fetch;
@@ -107,7 +109,8 @@ class MessageMapper {
 		int $highestKnownUid,
 		LoggerInterface $logger,
 		PerformanceLoggerTask $perf,
-		string $userId): array {
+		string $userId,
+		?int $receivedSinceTimestamp = null): array {
 		/**
 		 * To prevent memory exhaustion, we don't want to just ask for a list of
 		 * all UIDs and limit them client-side. Instead, we can (hopefully
@@ -118,14 +121,25 @@ class MessageMapper {
 		 * This logic might return fewer or more results than $maxResults
 		 */
 
+		$searchQuery = null;
+		if ($receivedSinceTimestamp !== null) {
+			$searchQuery = new Horde_Imap_Client_Search_Query();
+			$searchQuery->dateSearch(
+				(new DateTimeImmutable('@' . $receivedSinceTimestamp))->setTimezone(new DateTimeZone('UTC')),
+				Horde_Imap_Client_Search_Query::DATE_SINCE,
+				false
+			);
+		}
+
 		$metaResults = $client->search(
 			$mailbox,
-			null,
+			$searchQuery,
 			[
 				'results' => [
 					Horde_Imap_Client::SEARCH_RESULTS_MIN,
 					Horde_Imap_Client::SEARCH_RESULTS_MAX,
 					Horde_Imap_Client::SEARCH_RESULTS_COUNT,
+					Horde_Imap_Client::SEARCH_RESULTS_MATCH,
 				]
 			]
 		);
@@ -143,6 +157,16 @@ class MessageMapper {
 			];
 		}
 
+		$matchedUids = null;
+		if ($searchQuery !== null) {
+			$matchedUids = array_values(
+				array_filter(
+					iterator_to_array($metaResults['match']),
+					static fn (int $uid): bool => $uid > $highestKnownUid
+				)
+			);
+		}
+
 		// This can happen for iCloud
 		if ($metaResults['max'] === null) {
 			$uidnext = $client->status(
@@ -154,6 +178,38 @@ class MessageMapper {
 			$max = ((int)$metaResults['max']);
 		}
 		unset($metaResults);
+
+		if ($matchedUids !== null) {
+			if ($matchedUids === []) {
+				$logger->debug("Date-limited findAll found no unseen recent messages in mailbox $mailbox.");
+				return [
+					'messages' => [],
+					'all' => true,
+					'total' => $total,
+				];
+			}
+
+			$uidsToFetch = array_slice($matchedUids, 0, $maxResults);
+			$logger->debug(sprintf(
+				'Date-limited findAll for mailbox %s matched %d recent messages and will fetch %d.',
+				$mailbox,
+				count($matchedUids),
+				count($uidsToFetch)
+			));
+			$messages = $this->findByIds(
+				$client,
+				$mailbox,
+				new Horde_Imap_Client_Ids($uidsToFetch),
+				$userId,
+			);
+			$perf->step('find IMAP messages by UID');
+
+			return [
+				'messages' => $messages,
+				'all' => count($matchedUids) <= $maxResults,
+				'total' => $total,
+			];
+		}
 
 		// The inclusive range of UIDs
 		$totalRange = $max - $min + 1;
@@ -221,7 +277,7 @@ class MessageMapper {
 			// Clean up some unused variables before recursion
 			unset($fetchResult, $idsToFetch, $query);
 			$perf->step('free memory before recursion');
-			return $this->findAll($client, $mailbox, $maxResults, $upper, $logger, $perf, $userId);
+			return $this->findAll($client, $mailbox, $maxResults, $upper, $logger, $perf, $userId, $receivedSinceTimestamp);
 		}
 		$uidCandidates = array_filter(
 			array_map(
