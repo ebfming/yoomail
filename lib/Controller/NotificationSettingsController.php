@@ -70,21 +70,11 @@ class NotificationSettingsController extends Controller {
 	}
 
 	private function readJsonOrRequestParams(): array {
-		$content = $this->request->getContent();
-		if (is_string($content) && trim($content) !== '') {
-			$data = json_decode($content, true);
-			if (is_array($data)) {
-				return $data;
-			}
+		$putPayload = $this->request->put;
+		if (is_array($putPayload)) {
+			return $putPayload;
 		}
 
-		return [
-			'nativeNewMail' => $this->request->getParam('nativeNewMail'),
-			'soundEnabled' => $this->request->getParam('soundEnabled'),
-			'toastEnabled' => $this->request->getParam('toastEnabled'),
-			'soundNewMail' => $this->request->getParam('soundNewMail'),
-			'soundSendSuccess' => $this->request->getParam('soundSendSuccess'),
-			'soundSendFail' => $this->request->getParam('soundSendFail'),
-		];
+		return $this->request->getParams();
 	}
 }
