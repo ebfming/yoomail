@@ -6,13 +6,13 @@
 
 本文档定义 YooMail 项目的代码规范。所有贡献都必须遵守以下规则，除非在相关 issue/PR 讨论中达成特殊约定。
 
-> [English](CODE-STANDARDS.md) · [贡献指南](../CONTRIBUTING-zh.md)
+> [English](CODE-STANDARDS.md) · [Contribution Guide](../CONTRIBUTING.md)
 
 ## 1. 语言
 
 - **所有代码注释、提交信息、PR 描述和代码评审意见必须使用英文。** 这保证项目对国际贡献者友好，并与上游 Nextcloud 生态保持一致。
 - **所有面向用户的文案必须以英文源字符串书写**，并走多语言（l10n）机制（见 §4）。禁止在用户可见消息中硬编码中文（或任何其他语言）。
-- 文档采用**中英双语成对维护**（`*-zh.md` + `*.md`）。英文版为权威版本，中文版为忠实翻译。
+- `README*.md` 与 `help/` 目录文档采用**中英双语成对维护**（`*-zh.md` + `*.md`）。英文版为权威版本，中文版为忠实翻译。
 
 ## 1.1 项目维护者
 
@@ -73,7 +73,7 @@
 
 ## 3. 前端（Vue/JS）
 
-- 组件位于 `src/`，构建产物提交到 `js/`。
+- 当前仓库直接提交前端构建产物到 `js/`。如果后续重新引入源码目录，也必须同步生成并提交对应的 `js/` 部署文件。
 - 使用 Nextcloud Vue 组件与设计系统（如 `var(--color-main-background)` 变量、默认网格基线等）。
 - 所有用户可见文案必须使用全局 `t('yoomail', ...)` / `n('yoomail', ...)` 辅助函数——禁止硬编码字符串。
 - Store 逻辑位于 `src/store/`；mutation 保持同步、action 异步。禁止在临时脚本中 patch store 方法。
@@ -142,7 +142,7 @@ Shell 脚本使用 `#` 注释，XML 使用 `<!-- ... -->`，JS 使用块注释�
 
 ## 9. 文档
 
-- 面向用户/开发者的文档采用**中英双语成对**：`NAME.md`（英文）和 `NAME-zh.md`（中文）。
+- `README*.md` 与 `help/` 目录文档采用**中英双语成对**；仓库其他文档默认以英文维护。
 - `CHANGELOG.md` 遵循 [Keep a Changelog](https://keepachangelog.com/)；版本号必须与 `appinfo/info.xml` 一致。
 - 文档索引：
   - 部署 / 实时服务：`help/DEPLOYMENT.md`

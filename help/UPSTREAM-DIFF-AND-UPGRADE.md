@@ -16,7 +16,6 @@ YooMail is a fork of Nextcloud Mail 5.10.12 and keeps the upstream directory str
 yoomail/
 ├── appinfo/          # App metadata (info.xml, routes)
 ├── lib/              # PHP backend (namespace OCA\YooMail)
-├── src/              # Frontend source (Vue)
 ├── js/               # Frontend build output (yoomail.js etc.)
 ├── css/              # Global styles
 ├── l10n/             # Translations
@@ -71,52 +70,43 @@ Flow:
 
 ## 4. Frontend source modifications
 
-These are the main source-level changes compared to upstream.
+These are the main frontend-level changes compared to upstream.
 
 ### 4.1 App rename (mail → yoomail)
 
 | File | Change |
 |------|--------|
-| `src/main.js` | `generateFilePath('mail',...)` → `'yoomail'`; `window.OCA.MailRealtime` → `OCA.YooMailRealtime`; added `moment.tz.setDefault()` |
-| `src/realtime.js` | `/apps/mail/api/realtime/token` → `/apps/yoomail/api/realtime/token`; `OCA.MailRealtime` → `OCA.YooMailRealtime` |
-| `src/init.js` | `loadState('mail',...)` → `'yoomail'`; added `timezone` and `time-format` preference storage |
-| `src/errors/convert.js` | `OCA\Mail\Exception\...` → `OCA\YooMail\Exception\...` |
-| `src/router.js` | router base → `generateUrl('/apps/yoomail/')` |
-| `src/service/MessageService.js` | `fetchThread` URL moved from `apps/mail/...` to `apps/yoomail/...` |
-| `src/components/AppSettingsMenu.vue` | `apps/mail/compose` → `apps/yoomail/compose` |
-| `src/components/NavigationAccount.vue` | `generateUrl('/apps/mail')` → `generateUrl('/apps/yoomail')` |
-| all `src/**/*.vue`, `src/**/*.js` | `t('mail', ...)` → `t('yoomail', ...)`; `n('mail',...)` → `n('yoomail',...)` |
+| Frontend bundle | Mail app ids / routes renamed from `mail` to `yoomail`; realtime globals renamed to `OCA.YooMailRealtime`; timezone and time-format handling added |
+| Error conversion layer | Backend exception names updated from `OCA\Mail\Exception\...` to `OCA\YooMail\Exception\...` |
+| Message fetch routes | Thread/body/message URLs moved from `/apps/mail/...` to `/apps/yoomail/...` |
+| UI strings | Frontend translations switched from `t('mail', ...)` / `n('mail', ...)` to `t('yoomail', ...)` / `n('yoomail', ...)` |
 
 ### 4.2 Bug fixes
 
 | File | Change |
 |------|--------|
-| `src/store/mainStore/actions.js` | fixed thread open race condition when mailbox is not loaded yet |
-| `src/components/Thread.vue` | changed deleted-thread UX: warning text, retry flow, `thread-not-found` event |
+| Thread state handling | fixed the race when opening a thread before its mailbox state was hydrated |
+| Deleted-thread UX | added a safer retry flow and a dedicated `thread-not-found` event path |
 
 ### 4.3 Time display
 
 | File | Change |
 |------|--------|
-| `src/util/userTimezone.js` | new helper for user timezone + 24/12h preference |
-| `src/util/relativeDatetime.js` | relative time and day grouping use user timezone |
-| `src/components/Moment.vue` | tooltip and display use user timezone |
-| `src/components/ThreadEnvelope.vue` | `formattedSentAt` uses user timezone |
+| Relative time formatting | now uses the user's Nextcloud timezone instead of the browser timezone |
+| Time-format preference | supports a user-selectable 24h / 12h display preference |
 
 ### 4.4 Theme / spacing
 
 | File | Change |
 |------|--------|
-| `src/components/MessageHTMLBody.vue` | dark-mode compatible background and padding |
-| `src/components/MessagePlainTextBody.vue` | added content padding |
+| Message detail styling | dark-mode compatible message background and tighter body spacing |
 
 ### 4.5 Version display
 
 | File | Change |
 |------|--------|
-| `src/components/AppSettingsMenu.vue` | About section shows `YooMail {version} ({internal-version})`; hides upstream footer version |
-| `src/init.js` | stores `mailVersion` and `internalVersion` |
-| `lib/Controller/PageController.php` | exposes `internalVersion` via initial state |
+| About panel | shows `YooMail {version} ({internal-version})` instead of the upstream footer version |
+| Initial state | exposes both `mailVersion` and `internalVersion` to the frontend |
 
 Important:
 
@@ -125,45 +115,36 @@ Important:
 
 ## 5. Frontend build and packaging
 
-After changing anything under `src/`:
-
-```bash
-npm ci
-npm run build
-```
-
-Build output goes to `js/`.
+At the moment this repository does not carry a checked-in `src/` tree or local
+frontend build toolchain metadata. The deployed source of truth is therefore
+the committed output under `js/`.
 
 Practical rule:
 
-- `src/` is the real source of truth
-- `js/` is the deployed artifact
-- modifying `src/` without rebuilding `js/` means production will not get the change
+- `js/` is currently the deployed frontend source in this repository
+- when frontend source modules are maintained outside this checkout, upgrades
+  must still regenerate and replace the matching `js/` assets here
+- changing only PHP/CSS without verifying the related `js/` chunk can leave
+  the browser on stale behavior
 
 ## 6. Upgrade checklist
 
 When rebasing onto a newer upstream Mail version, check these areas first:
 
-1. `src/main.js`
-2. `src/realtime.js`
-3. `src/init.js`
-4. `src/router.js`
-5. `src/service/MessageService.js`
-6. `src/store/mainStore/actions.js`
-7. `src/components/Thread.vue`
-8. `src/components/AppSettingsMenu.vue`
-9. `lib/Controller/PageController.php`
-10. `lib/Controller/RealtimeController.php`
-11. `appinfo/routes.php`
+1. `js/yoomail.js` and related split chunks
+2. `lib/Controller/PageController.php`
+3. `lib/Controller/RealtimeController.php`
+4. `lib/Service/Sync/ImapToDbSynchronizer.php`
+5. `lib/Service/MessageBodyStorage.php`
+6. `appinfo/routes.php`
 
 Also verify:
 
-1. frontend bundle still builds cleanly
-2. `js/` was regenerated and replaced
-3. all `/apps/mail/...` paths are still renamed to `/apps/yoomail/...`
-4. all `t('mail', ...)` / `n('mail', ...)` calls are still under `yoomail`
-5. realtime token route still exists
-6. About page still shows the YooMail version, not upstream `5.10.12`
+1. all `/apps/mail/...` paths are still renamed to `/apps/yoomail/...`
+2. all `t('mail', ...)` / `n('mail', ...)` calls are still under `yoomail`
+3. realtime token route still exists
+4. the About page still shows the YooMail version, not upstream `5.10.12`
+5. any externally rebuilt frontend assets were copied back into `js/`
 
 ## 7. Release reminders
 

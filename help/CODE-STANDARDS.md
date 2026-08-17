@@ -18,9 +18,9 @@ upon in the related issue/PR discussion.
 - **All user-facing strings must use English source strings** and go through
   the localization (l10n) mechanism (see §4). Never hard-code Chinese (or any
   other language) in user-visible messages.
-- Documentation is maintained in **bilingual pairs** (`*-zh.md` + `*.md`).
-  The English version is the source of truth; the Chinese version is a
-  faithful translation.
+- `README*.md` and documents under `help/` are maintained in **bilingual
+  pairs** (`*-zh.md` + `*.md`). The English version is the source of truth;
+  the Chinese version is a faithful translation.
 
 ## 1.1 Project maintainers
 
@@ -89,7 +89,9 @@ DocBlock style comments.
 
 ## 3. Frontend (Vue/JS)
 
-- Components live in `src/`, built bundles are committed to `js/`.
+- This repository currently ships the committed frontend bundles in `js/`.
+  If source modules are reintroduced later, they must regenerate the
+  corresponding deployed assets in `js/`.
 - Use the Nextcloud Vue components and the design system (variables such as
   `var(--color-main-background)`, default grid baselines, etc.).
 - All user-facing text must use the global `t('yoomail', ...)` / `n('yoomail', ...)`
@@ -171,8 +173,8 @@ Shell scripts use `#` comments, XML uses `<!-- ... -->`, JS uses the block form.
 
 ## 9. Documentation
 
-- User/docs-facing documents are written in **bilingual pairs**:
-  `NAME.md` (English) and `NAME-zh.md` (Chinese).
+- `README*.md` and documents under `help/` are written in **bilingual pairs**.
+  Other repository-level docs default to English.
 - `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/);
   version numbers must match `appinfo/info.xml`.
 - Pointers:

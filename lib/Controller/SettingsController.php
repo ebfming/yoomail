@@ -27,7 +27,10 @@ use function array_merge;
 use function filter_var;
 use function fsockopen;
 use function in_array;
+use function is_array;
+use function is_string;
 use function preg_match;
+use function strtolower;
 
 #[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
 class SettingsController extends Controller {
@@ -143,17 +146,19 @@ class SettingsController extends Controller {
 
 	public function updateBasicSettings(
 	): JSONResponse {
-		$timeFormatDefault = (string)$this->request->getParam('timeFormatDefault', '24');
-		$realtimeMode = (string)$this->request->getParam('realtimeMode', 'websocket');
-		$deleteSyncLocalToServer = $this->toBool($this->request->getParam('deleteSyncLocalToServer', true));
-		$deleteSyncServerToLocal = $this->toBool($this->request->getParam('deleteSyncServerToLocal', true));
-		$fetchRangeDays = (string)$this->request->getParam('fetchRangeDays', '30');
-		$bodyCacheCleanupEnabled = $this->toBool($this->request->getParam('bodyCacheCleanupEnabled', true));
-		$bodyCacheCleanupDays = (int)$this->request->getParam('bodyCacheCleanupDays', 30);
-		$bodyCacheCleanupSizeMb = (int)$this->request->getParam('bodyCacheCleanupSizeMb', 1024);
-		$localAttachmentCleanupEnabled = $this->toBool($this->request->getParam('localAttachmentCleanupEnabled', true));
-		$localAttachmentCleanupDays = (int)$this->request->getParam('localAttachmentCleanupDays', 30);
-		$localAttachmentCleanupSizeMb = (int)$this->request->getParam('localAttachmentCleanupSizeMb', 512);
+		$data = $this->readJsonOrRequestParams();
+
+		$timeFormatDefault = (string)$this->readInputValue($data, 'timeFormatDefault', '24');
+		$realtimeMode = (string)$this->readInputValue($data, 'realtimeMode', 'websocket');
+		$deleteSyncLocalToServer = $this->toBool($this->readInputValue($data, 'deleteSyncLocalToServer', true));
+		$deleteSyncServerToLocal = $this->toBool($this->readInputValue($data, 'deleteSyncServerToLocal', true));
+		$fetchRangeDays = (string)$this->readInputValue($data, 'fetchRangeDays', '30');
+		$bodyCacheCleanupEnabled = $this->toBool($this->readInputValue($data, 'bodyCacheCleanupEnabled', true));
+		$bodyCacheCleanupDays = (int)$this->readInputValue($data, 'bodyCacheCleanupDays', 30);
+		$bodyCacheCleanupSizeMb = (int)$this->readInputValue($data, 'bodyCacheCleanupSizeMb', 1024);
+		$localAttachmentCleanupEnabled = $this->toBool($this->readInputValue($data, 'localAttachmentCleanupEnabled', true));
+		$localAttachmentCleanupDays = (int)$this->readInputValue($data, 'localAttachmentCleanupDays', 30);
+		$localAttachmentCleanupSizeMb = (int)$this->readInputValue($data, 'localAttachmentCleanupSizeMb', 512);
 
 		if (!in_array($timeFormatDefault, self::TIME_FORMATS, true)) {
 			return HttpJsonResponse::fail([$this->l10n->t('Unsupported time format')], 400);
@@ -275,6 +280,27 @@ class SettingsController extends Controller {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Read payloads from JSON/PUT bodies first, then fall back to generic request params.
+	 *
+	 * This avoids admin settings silently snapping back to defaults when the browser
+	 * sends a JSON body for PUT requests.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function readJsonOrRequestParams(): array {
+		$putPayload = $this->request->put;
+		if (is_array($putPayload)) {
+			return $putPayload;
+		}
+
+		return $this->request->getParams();
+	}
+
+	private function readInputValue(array $data, string $key, mixed $default): mixed {
+		return $data[$key] ?? $this->request->getParam($key, $default);
 	}
 
 	private function buildHealthSummary(string $status, string $mode, string $host, int $port): string {

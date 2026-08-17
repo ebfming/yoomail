@@ -6,22 +6,30 @@
 
 本文档记录 YooMail 相对上游 [Nextcloud Mail](https://github.com/nextcloud/mail) 修改了哪些源码文件，以及后续升级、合并上游版本、重新打包前端时必须注意的点。
 
+> [English](UPSTREAM-DIFF-AND-UPGRADE.md)
+
 ## 1. 项目结构
 
-YooMail 基于 Nextcloud Mail 5.10.12 二次开发，整体仍沿用上游目录结构：
+YooMail 基于 Nextcloud Mail 5.10.12 二次开发，整体仍沿用上游目录结构，但当前仓库以“可直接部署的应用包”为主：
 
 ```text
 yoomail/
 ├── appinfo/          # 应用元数据(info.xml、路由)
 ├── lib/              # PHP 后端(命名空间 OCA\YooMail)
-├── src/              # 前端源码(Vue)
-├── js/               # 前端构建产物(yoomail.js 等)
+├── js/               # 已提交的前端构建产物(yoomail.js 等)
 ├── css/              # 全局样式
 ├── l10n/             # 翻译
 ├── realtime/         # 实时收信服务(Workerman + IMAP IDLE)
+├── templates/        # 后台设置等模板
 ├── help/             # 文档
 └── README.md         # 产品说明
 ```
+
+说明：
+
+- 当前仓库没有随包提交独立的 `src/` 前端源码树。
+- 现阶段前端改动直接以 `js/` 中的部署产物为准。
+- 如果后续重新引入源码目录，必须同步补充构建流程与升级文档。
 
 ## 2. 与上游的全局差异
 
@@ -67,99 +75,67 @@ YooMail 与上游 `mail` 应用可以并存，互不干扰。
 - `lib/Service/Sync/ImapToDbSynchronizer.php::sync` — 同步前先 SELECT 邮箱
 - 避免部分中文邮箱特殊文件夹反复清缓存
 
-## 4. 前端源码修改清单
+## 4. 当前仓库里的关键前端改动区域
 
-这部分是后续升级时最容易被覆盖的区域。
+由于当前仓库直接提交 `js/` 构建产物，后续升级时最容易被覆盖的是这些 bundle 中承载的 YooMail 定制逻辑：
 
-### 4.1 应用重命名（mail → yoomail）
+- `js/yoomail.js`
+- `js/admin-basic-settings.js`
+- `js/personal-notification-settings.js`
 
-| 文件 | 改动 |
-|------|------|
-| `src/main.js` | `generateFilePath('mail',...)` → `'yoomail'`；`window.OCA.MailRealtime` → `OCA.YooMailRealtime`；增加 `moment.tz.setDefault()` |
-| `src/realtime.js` | `/apps/mail/api/realtime/token` → `/apps/yoomail/api/realtime/token`；`OCA.MailRealtime` → `OCA.YooMailRealtime` |
-| `src/init.js` | `loadState('mail',...)` → `'yoomail'`；增加 `timezone` 与 `time-format` preference |
-| `src/errors/convert.js` | `OCA\Mail\Exception\...` → `OCA\YooMail\Exception\...` |
-| `src/router.js` | 路由 base 改为 `generateUrl('/apps/yoomail/')` |
-| `src/service/MessageService.js` | `fetchThread` API 路径改为 `/apps/yoomail/...` |
-| `src/components/AppSettingsMenu.vue` | `apps/mail/compose` → `apps/yoomail/compose` |
-| `src/components/NavigationAccount.vue` | `generateUrl('/apps/mail')` → `generateUrl('/apps/yoomail')` |
-| 全部 `src/**/*.vue`、`src/**/*.js` | `t('mail', ...)` / `n('mail', ...)` 改为 `yoomail` |
+重点关注的功能方向：
 
-### 4.2 Bug 修复
-
-| 文件 | 改动 |
-|------|------|
-| `src/store/mainStore/actions.js` | 修复 mailbox 尚未加载时的线程打开 race condition |
-| `src/components/Thread.vue` | 调整“邮件可能已删除”的线程错误处理与重试流程 |
-
-### 4.3 时间显示
-
-| 文件 | 改动 |
-|------|------|
-| `src/util/userTimezone.js` | 新增：统一处理用户时区与 24/12 小时制 |
-| `src/util/relativeDatetime.js` | 相对时间与分组边界改用用户时区 |
-| `src/components/Moment.vue` | tooltip 与显示时间改用用户时区 |
-| `src/components/ThreadEnvelope.vue` | `formattedSentAt` 改用用户时区 |
-
-### 4.4 主题与间距
-
-| 文件 | 改动 |
-|------|------|
-| `src/components/MessageHTMLBody.vue` | 暗色兼容背景与 padding |
-| `src/components/MessagePlainTextBody.vue` | 补充正文 padding |
-
-### 4.5 关于页版本显示
-
-| 文件 | 改动 |
-|------|------|
-| `src/components/AppSettingsMenu.vue` | 关于页显示 `YooMail {version} ({internal-version})`，并隐藏上游 footer 版本 |
-| `src/init.js` | 存储 `mailVersion` 与 `internalVersion` |
-| `lib/Controller/PageController.php` | 通过 initial state 暴露 `internalVersion` |
+- 应用重命名（`mail` → `yoomail`）
+- realtime token / WebSocket 路径切换
+- 用户时区与 12/24 小时显示
+- 邮件详情区样式与布局调整
+- 删除确认、列表自动刷新、通知与声音提醒
+- 后台管理页与个人通知页
+- 关于页版本号显示 `version + internal-version`
 
 特别注意：
 
-- 读取 `appinfo/info.xml` 必须使用 `OC\App\InfoParser`
-- 不要在 web 环境里用 `simplexml_load_file` 读取内部版本号
+- 当前仓库没有可直接修改后再自动重建的 `src/` 源码树说明文件。
+- 如果以后补回源码构建链路，要把“源码入口、打包命令、产物路径”一并更新到本文档。
 
 ## 5. 前端构建与打包
 
-只要修改了 `src/` 下任何文件，就必须重新构建：
+当前仓库以已提交的 `js/` 部署产物为准，因此升级时要遵循：
 
-```bash
-npm ci
-npm run build
-```
+- 不要被上游 `mail` 的 bundle 覆盖掉 YooMail 自己的 `js/` 文件
+- 任何前端修改都必须最终反映到仓库中的 `js/` 部署文件
+- 发布前要确认后台设置页、通知页、主邮件页加载到的都是 YooMail 当前版本脚本
 
-规则要记住：
-
-- `src/` 才是源码
-- `js/` 是部署产物
-- 只改 `src/` 不重新生成 `js/`，线上不会生效
+如果后续重新引入标准前端源码与构建链，再补充明确的构建命令。
 
 ## 6. 升级检查清单
 
 后续如果合并更高版本上游 Mail，优先检查这些地方：
 
-1. `src/main.js`
-2. `src/realtime.js`
-3. `src/init.js`
-4. `src/router.js`
-5. `src/service/MessageService.js`
-6. `src/store/mainStore/actions.js`
-7. `src/components/Thread.vue`
-8. `src/components/AppSettingsMenu.vue`
-9. `lib/Controller/PageController.php`
-10. `lib/Controller/RealtimeController.php`
-11. `appinfo/routes.php`
+1. `appinfo/info.xml`
+2. `appinfo/routes.php`
+3. `lib/Controller/PageController.php`
+4. `lib/Controller/RealtimeController.php`
+5. `lib/Controller/SettingsController.php`
+6. `lib/Service/MessageBodyStorage.php`
+7. `lib/Service/RealtimeMessagePublisher.php`
+8. `realtime/server.php`
+9. `realtime/deploy/yoomail.service.template`
+10. `deploy.sh`
+11. `templates/settings-admin.php`
+12. `templates/settings-personal-notifications.php`
+13. `js/yoomail.js`
+14. `js/admin-basic-settings.js`
+15. `js/personal-notification-settings.js`
 
 还要逐项确认：
 
-1. 前端 bundle 还能正常构建
-2. `js/` 构建产物已经重新生成并替换
-3. 所有 `/apps/mail/...` 是否仍已改成 `/apps/yoomail/...`
-4. 所有 `t('mail', ...)` / `n('mail', ...)` 是否仍已改成 `yoomail`
-5. realtime token 路由是否仍存在
-6. 关于页显示的是否仍是 YooMail 版本，而不是上游 `5.10.12`
+1. 所有 `/apps/mail/...` 路径是否仍已改成 `/apps/yoomail/...`
+2. 所有 `t('mail', ...)` / `n('mail', ...)` 是否仍已改成 `yoomail`
+3. realtime token 路由是否仍存在
+4. 关于页显示的是否仍是 YooMail 版本，而不是上游 `5.10.12`
+5. 管理页与个人通知页是否仍正确注入初始状态
+6. WebSocket 公网地址、服务模板和部署脚本是否仍是 YooMail 版本
 
 ## 7. 发版提醒
 

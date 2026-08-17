@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// 显式加载应用级函数文件。
-// Nextcloud 的 registerAutoloading() 在 require composer/autoload.php 时,
-// vendor 的 files 自动加载机制不保证执行应用自身的 lib/functions.php,
-// 导致 OCA\YooMail\array_flat_map() 等函数在 HTTP 请求下未定义。
+// Load app-level helper functions explicitly.
+// When Nextcloud requires composer/autoload.php during registerAutoloading(),
+// Composer's vendor "files" autoloading does not reliably execute the app's
+// own lib/functions.php, which can leave helpers such as
+// OCA\YooMail\array_flat_map() undefined in HTTP requests.
 require_once __DIR__ . '/../lib/functions.php';

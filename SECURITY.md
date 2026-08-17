@@ -8,8 +8,6 @@ YooMail is a secondary development (fork) of Nextcloud Mail. Security is a
 priority for the whole Nextcloud ecosystem — thank you for helping us keep it
 safe.
 
-> [中文版](SECURITY-zh.md)
-
 ## Supported versions
 
 Security fixes are applied to the latest release and, where feasible, to the

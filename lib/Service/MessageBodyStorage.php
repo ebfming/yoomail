@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\YooMail\Service;
 
 use OCA\YooMail\Db\Message;
+use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -33,10 +34,11 @@ class MessageBodyStorage {
 
 	public function __construct(
 		private LoggerInterface $logger,
+		private IConfig $config,
 	) {
 		// e.g. /web/nextcloud/data/appdata_<instanceid>/mail
-		$dataDir = rtrim(\OC::$server->getConfig()->getSystemValueString('datadirectory', '/web/nextcloud/data'), '/');
-		$instanceId = \OC::$server->getConfig()->getSystemValueString('instanceid', '');
+		$dataDir = rtrim($this->config->getSystemValueString('datadirectory', '/web/nextcloud/data'), '/');
+		$instanceId = $this->config->getSystemValueString('instanceid', '');
 		$this->baseDir = $dataDir . '/appdata_' . $instanceId . '/mail';
 	}
 

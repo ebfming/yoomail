@@ -9,7 +9,7 @@ Thank you for considering contributing to YooMail! 🚀
 YooMail is a secondary development (fork) of [Nextcloud Mail](https://github.com/nextcloud/mail).
 This guide explains how to contribute effectively.
 
-> [中文版](CONTRIBUTING-zh.md) · [Code Standards](help/CODE-STANDARDS.md) · [Changelog](CHANGELOG.md)
+> [Code Standards](help/CODE-STANDARDS.md) · [Changelog](CHANGELOG.md)
 
 ## Maintainers
 
@@ -94,6 +94,6 @@ The bundles are committed to `js/`. Do not commit `node_modules/`.
 
 ## Documentation
 
-User- and developer-facing documents are maintained in **bilingual pairs**
-(`NAME.md` English + `NAME-zh.md` Chinese). Update both when you change
-behavior, deployment steps or upgrade notes.
+`README*.md` and documents under `help/` are maintained in bilingual pairs.
+Other repository-level docs default to English unless there is a specific
+reason to publish a translated copy.
