@@ -18,14 +18,14 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\Util;
 
-	class NotificationSettingsController extends Controller {
-		public function __construct(
-			private IRequest $request,
-			private ?string $userId,
-			private NotificationSettingsService $notificationSettingsService,
-		) {
-			parent::__construct(Application::APP_ID, $request);
-		}
+class NotificationSettingsController extends Controller {
+	public function __construct(
+		IRequest $request,
+		private ?string $userId,
+		private NotificationSettingsService $notificationSettingsService,
+	) {
+		parent::__construct(Application::APP_ID, $request);
+	}
 
 	#[NoAdminRequired]
 	public function index(): TemplateResponse {

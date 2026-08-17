@@ -127,11 +127,11 @@ class AdminSettings implements ISettings {
 			$this->aiIntegrationsService->isLlmAvailable(TextToTextSummary::ID)
 		);
 
-		$this->initialStateService->provideInitialState(
-			Application::APP_ID,
-			'google_oauth_client_id',
-			$this->googleIntegration->getClientId(),
-		);
+			$this->initialStateService->provideInitialState(
+				Application::APP_ID,
+				'google_oauth_client_id',
+				$this->googleIntegration->getClientId() ?? '',
+			);
 		$this->initialStateService->provideInitialState(
 			Application::APP_ID,
 			'google_oauth_redirect_url',
@@ -147,11 +147,11 @@ class AdminSettings implements ISettings {
 			'microsoft_oauth_tenant_id',
 			$this->microsoftIntegration->getTenantId(),
 		);
-		$this->initialStateService->provideInitialState(
-			Application::APP_ID,
-			'microsoft_oauth_client_id',
-			$this->microsoftIntegration->getClientId(),
-		);
+			$this->initialStateService->provideInitialState(
+				Application::APP_ID,
+				'microsoft_oauth_client_id',
+				$this->microsoftIntegration->getClientId() ?? '',
+			);
 		$this->initialStateService->provideInitialState(
 			Application::APP_ID,
 			'microsoft_oauth_redirect_url',
