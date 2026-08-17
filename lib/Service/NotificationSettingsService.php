@@ -62,9 +62,9 @@ class NotificationSettingsService {
 
 	public function getAudioUrls(): array {
 		return [
-			'newMail' => $this->urlGenerator->linkTo(Application::APP_ID, 'img/sounds/push.mp3'),
-			'sendSuccess' => $this->urlGenerator->linkTo(Application::APP_ID, 'img/sounds/send-success.mp3'),
-			'sendFail' => $this->urlGenerator->linkTo(Application::APP_ID, 'img/sounds/send-fail.mp3'),
+			'newMail' => $this->urlGenerator->linkTo(Application::APP_ID, 'img/sounds/push.wav'),
+			'sendSuccess' => $this->urlGenerator->linkTo(Application::APP_ID, 'img/sounds/send-succeess.wav'),
+			'sendFail' => $this->urlGenerator->linkTo(Application::APP_ID, 'img/sounds/send-fail.wav'),
 		];
 	}
 

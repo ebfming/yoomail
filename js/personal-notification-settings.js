@@ -45,6 +45,31 @@
 			if (node) {
 				node.textContent = getPermissionText()
 			}
+
+			const button = root.querySelector('#ym-request-notification-permission')
+			if (!button) {
+				return
+			}
+
+			if (!('Notification' in window)) {
+				button.disabled = true
+				button.textContent = t(appId, 'Browser notifications unavailable')
+				return
+			}
+
+			switch (Notification.permission) {
+			case 'granted':
+				button.disabled = true
+				button.textContent = t(appId, 'Browser permission granted')
+				break
+			case 'denied':
+				button.disabled = false
+				button.textContent = t(appId, 'Open browser notification settings')
+				break
+			default:
+				button.disabled = false
+				button.textContent = t(appId, 'Request browser permission')
+			}
 		}
 
 		async function saveSettings() {
@@ -81,9 +106,30 @@
 				return
 			}
 
-			try {
-				await Notification.requestPermission()
+			if (Notification.permission === 'granted') {
 				updatePermissionStatus()
+				OC.Notification.showTemporary(t(appId, 'Browser notifications are already allowed'))
+				return
+			}
+
+			if (Notification.permission === 'denied') {
+				updatePermissionStatus()
+				OC.Notification.showTemporary(t(appId, 'Browser notifications were blocked. Please enable notifications for this site in your browser settings.'))
+				return
+			}
+
+			try {
+				const permission = await Notification.requestPermission()
+				updatePermissionStatus()
+				if (permission === 'granted') {
+					OC.Notification.showTemporary(t(appId, 'Browser notifications are now allowed'))
+					return
+				}
+				if (permission === 'denied') {
+					OC.Notification.showTemporary(t(appId, 'Browser notifications were denied. Please enable notifications for this site in your browser settings if you want to use them.'))
+					return
+				}
+				OC.Notification.showTemporary(t(appId, 'Browser notification permission was not changed'))
 			} catch (error) {
 				OC.Notification.showTemporary(t(appId, 'Failed to request browser notification permission'))
 			}
