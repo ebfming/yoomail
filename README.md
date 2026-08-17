@@ -32,6 +32,17 @@ YooMail is a secondary development (fork) of [Nextcloud Mail](https://github.com
 - **Encryption support** — Mailvelope and S/MIME
 - **Deep integration** — Contacts, Calendar, Files
 
+## Differentiation vs upstream Mail
+
+| Capability | Upstream Mail | YooMail | Value |
+|------------|---------------|---------|-------|
+| **Realtime delivery** | Polling (60s + cron) | **IMAP IDLE + WebSocket** (millisecond-level) | Core differentiator; highly visible in enterprise use |
+| **Multi-client realtime sync** | Per-page level | Server push + list delta merge | Ahead of upstream |
+| **Delete synchronization** | Single client | **Configurable two-way sync + `remoteMissing` hints** | Solves accidental multi-client deletion |
+| **Admin operations & config** | Minimal | Time format / delete sync / cleanup / fetch range / realtime mode | Enterprise self-management needs |
+| **Notifications** | Basic | Sound + toast + native + send feedback | Complete |
+| **Body cache instant-open** | Renders on each open | **Persistent cache, near-instant reopen** | Faster reading experience |
+
 ## Version info
 
 | Item | Value |

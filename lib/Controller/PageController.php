@@ -187,16 +187,17 @@ class PageController extends Controller {
 			$this->config->getUserValue($this->currentUserId, 'core', 'timezone', 'UTC')
 		);
 
-		// Time display preference: '24' (default) or '12' (AM/PM).
-		// Reserved for a future settings page; frontend defaults to 24h.
+		$timeFormat = $this->config->getUserValue(
+			$this->currentUserId,
+			'yoomail',
+			'time-format',
+			$this->config->getAppValue('yoomail', 'time_format_default', '24')
+		);
+
+		// Time display preference: user setting wins, otherwise use the admin default.
 		$this->initialStateService->provideInitialState(
 			'time-format',
-			$this->config->getUserValue(
-				$this->currentUserId,
-				'yoomail',
-				'time-format',
-				$this->config->getAppValue('yoomail', 'time_format_default', '24')
-			)
+			$timeFormat
 		);
 
 		$this->initialStateService->provideInitialState(
@@ -302,6 +303,7 @@ class PageController extends Controller {
 			'base-app-version' => $appInfoVersions['base-app-version'],
 			'config-base-app-version' => $appInfoVersions['base-app-version'],
 			'external-avatars' => $this->preferences->getPreference($this->currentUserId, 'external-avatars', 'true'),
+			'time-format' => $timeFormat,
 			'layout-mode' => $this->preferences->getPreference($this->currentUserId, 'layout-mode', 'vertical-split'),
 			'layout-message-view' => $this->preferences->getPreference($this->currentUserId, 'layout-message-view', $this->config->getAppValue('yoomail', 'layout_message_view', 'threaded')),
 			'reply-mode' => $this->preferences->getPreference($this->currentUserId, 'reply-mode', 'top'),

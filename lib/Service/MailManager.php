@@ -31,6 +31,7 @@ use OCA\YooMail\Events\MessageDeletedEvent;
 use OCA\YooMail\Events\MessageFlaggedEvent;
 use OCA\YooMail\Exception\ClientException;
 use OCA\YooMail\Exception\ImapFlagEncodingException;
+use OCA\YooMail\Exception\RemoteMessageMissingException;
 use OCA\YooMail\Exception\ServiceException;
 use OCA\YooMail\Exception\TrashMailboxNotSetException;
 use OCA\YooMail\Folder;
@@ -46,6 +47,8 @@ use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 use function array_map;
 use function array_values;
+use function str_contains;
+use function strtolower;
 
 class MailManager implements IMailManager {
 	/**
@@ -364,20 +367,39 @@ class MailManager implements IMailManager {
 			throw new ServiceException('No trash folder', 0, $e);
 		}
 
-		if ($mailbox->getName() === $trashMailbox->getName()) {
-			// Delete inside trash -> expunge
-			$this->imapMessageMapper->expunge(
-				$client,
-				$mailbox->getName(),
-				$messageUid
+		try {
+			if ($mailbox->getName() === $trashMailbox->getName()) {
+				// Delete inside trash -> expunge
+				$this->imapMessageMapper->expunge(
+					$client,
+					$mailbox->getName(),
+					$messageUid
+				);
+			} else {
+				$this->imapMessageMapper->move(
+					$client,
+					$mailbox->getName(),
+					$messageUid,
+					$trashMailbox->getName()
+				);
+			}
+		} catch (ServiceException $e) {
+			if (!$this->isRemoteMessageMissingException($e)) {
+				throw $e;
+			}
+
+			$this->logger->info('Remote message was already missing during delete, cleaning local cache only', [
+				'accountId' => $account->getId(),
+				'mailboxId' => $mailbox->getId(),
+				'messageUid' => $messageUid,
+				'exception' => $e,
+			]);
+
+			$this->eventDispatcher->dispatchTyped(
+				new MessageDeletedEvent($account, $mailbox, $messageUid)
 			);
-		} else {
-			$this->imapMessageMapper->move(
-				$client,
-				$mailbox->getName(),
-				$messageUid,
-				$trashMailbox->getName()
-			);
+
+			throw new RemoteMessageMissingException('Remote message may already have been deleted', 0, $e);
 		}
 
 		$this->eventDispatcher->dispatchTyped(
@@ -399,6 +421,26 @@ class MailManager implements IMailManager {
 		$this->eventDispatcher->dispatchTyped(
 			new MessageDeletedEvent($account, $mailbox, $messageUid)
 		);
+	}
+
+	private function isRemoteMessageMissingException(\Throwable $throwable): bool {
+		for ($current = $throwable; $current !== null; $current = $current->getPrevious()) {
+			if ($current instanceof DoesNotExistException) {
+				return true;
+			}
+
+			$message = strtolower($current->getMessage());
+			if (
+				str_contains($message, 'does not exist')
+				|| str_contains($message, 'not found')
+				|| str_contains($message, 'no matching message')
+				|| str_contains($message, 'no messages matched')
+			) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -994,17 +1036,26 @@ class MailManager implements IMailManager {
 			$messageInTrash
 		);
 
+		$remoteMissing = false;
 		foreach ($messages as $message) {
 			$this->logger->debug('deleting message', [
 				'messageId' => $message['messageUid'],
 				'mailboxId' => $mailbox->getId(),
 			]);
 
-			$this->deleteMessage(
-				$account,
-				$message['mailboxName'],
-				$message['messageUid']
-			);
+			try {
+				$this->deleteMessage(
+					$account,
+					$message['mailboxName'],
+					$message['messageUid']
+				);
+			} catch (RemoteMessageMissingException $e) {
+				$remoteMissing = true;
+			}
+		}
+
+		if ($remoteMissing) {
+			throw new RemoteMessageMissingException('One or more remote messages may already have been deleted');
 		}
 	}
 

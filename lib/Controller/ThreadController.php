@@ -11,7 +11,9 @@ namespace OCA\YooMail\Controller;
 
 use OCA\YooMail\Contracts\IMailManager;
 use OCA\YooMail\Exception\ClientException;
+use OCA\YooMail\Exception\RemoteMessageMissingException;
 use OCA\YooMail\Exception\ServiceException;
+use OCA\YooMail\Http\JsonResponse as YooMailJsonResponse;
 use OCA\YooMail\Http\TrapError;
 use OCA\YooMail\Service\AccountService;
 use OCA\YooMail\Service\AiIntegrations\AiIntegrationsService;
@@ -22,8 +24,10 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\OpenAPI;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\IL10N;
 use OCP\IRequest;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 #[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
 class ThreadController extends Controller {
@@ -34,6 +38,7 @@ class ThreadController extends Controller {
 	private AiIntegrationsService $aiIntergrationsService;
 	private LoggerInterface $logger;
 	private DelegationService $delegationService;
+	private IL10N $l10n;
 
 
 	public function __construct(string $appName,
@@ -44,7 +49,8 @@ class ThreadController extends Controller {
 		SnoozeService $snoozeService,
 		AiIntegrationsService $aiIntergrationsService,
 		LoggerInterface $logger,
-		DelegationService $delegationService) {
+		DelegationService $delegationService,
+		IL10N $l10n) {
 		parent::__construct($appName, $request);
 		$this->currentUserId = $userId;
 		$this->accountService = $accountService;
@@ -53,6 +59,7 @@ class ThreadController extends Controller {
 		$this->aiIntergrationsService = $aiIntergrationsService;
 		$this->logger = $logger;
 		$this->delegationService = $delegationService;
+		$this->l10n = $l10n;
 	}
 
 	/**
@@ -244,11 +251,30 @@ class ThreadController extends Controller {
 		if ($threadRootId === null) {
 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
 		}
-		$this->mailManager->deleteThread(
-			$account,
-			$mailbox,
-			$threadRootId
-		);
+		try {
+			$this->mailManager->deleteThread(
+				$account,
+				$mailbox,
+				$threadRootId
+			);
+		} catch (RemoteMessageMissingException $e) {
+			return YooMailJsonResponse::success([
+				'remoteMissing' => true,
+				'message' => $this->l10n->t('The local message was deleted. The remote message may already have been deleted.'),
+			]);
+		} catch (Throwable $e) {
+			$subject = $message->getSubject() ?: $this->l10n->t('(No subject)');
+			$this->logger->error("Could not delete thread <$id>: {$e->getMessage()}", [
+				'exception' => $e,
+				'messageId' => $id,
+				'subject' => $subject,
+			]);
+
+			return YooMailJsonResponse::error(
+				$this->l10n->t('Could not delete "%1$s". Reason: %2$s. Please contact your administrator.', [$subject, $e->getMessage()]),
+				Http::STATUS_INTERNAL_SERVER_ERROR
+			);
+		}
 		$this->delegationService->logDelegatedAction($this->currentUserId, $effectiveUserId, "$this->currentUserId deleted thread <$id> on behalf of $effectiveUserId");
 
 		return new JSONResponse();

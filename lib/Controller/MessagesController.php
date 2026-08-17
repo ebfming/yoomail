@@ -21,6 +21,7 @@ use OCA\YooMail\Contracts\ITrustedSenderService;
 use OCA\YooMail\Contracts\IUserPreferences;
 use OCA\YooMail\Db\Message;
 use OCA\YooMail\Exception\ClientException;
+use OCA\YooMail\Exception\RemoteMessageMissingException;
 use OCA\YooMail\Exception\ServiceException;
 use OCA\YooMail\Http\AttachmentDownloadResponse;
 use OCA\YooMail\Http\HtmlResponse;
@@ -267,7 +268,7 @@ class MessagesController extends Controller {
 				);
 			} catch (ServiceException $e) {
 				if ($e->getPrevious() instanceof DoesNotExistException) {
-					return new JSONResponse([], Http::STATUS_NOT_FOUND);
+					return new JSONResponse($this->buildUnavailableBody($account->getId(), $mailbox->getId(), $message));
 				}
 				throw $e;
 			}
@@ -314,6 +315,29 @@ class MessagesController extends Controller {
 		$response->cacheFor(60 * 60, false, true);
 
 		return $response;
+	}
+
+	/**
+	 * Build a stable body payload for messages that are still listed locally but
+	 * no longer exist on the IMAP server.
+	 *
+	 * This can happen when server-to-local delete sync is disabled. The frontend
+	 * expects the body endpoint to always return a message-body shaped object.
+	 */
+	private function buildUnavailableBody(int $accountId, int $mailboxId, Message $message): array {
+		return array_merge($message->jsonSerialize(), [
+			'body' => $this->l10n->t('This message is no longer available on the mail server.'),
+			'hasHtmlBody' => false,
+			'signature' => null,
+			'attachments' => [],
+			'inlineAttachments' => [],
+			'accountId' => $accountId,
+			'mailboxId' => $mailboxId,
+			'databaseId' => $message->getId(),
+			'isSenderTrusted' => $this->isSenderTrusted($message),
+			'smime' => new SmimeData(),
+			'remoteUnavailable' => true,
+		]);
 	}
 
 	/**
@@ -695,13 +719,21 @@ class MessagesController extends Controller {
 				} else {
 					$client = $this->clientFactory->getClient($account);
 					try {
-						$html = $this->mailManager->getImapMessage(
-							$client,
-							$account,
-							$mailbox,
-							$message->getUid(),
-							true
-						)->getHtmlBody($id);
+						try {
+							$html = $this->mailManager->getImapMessage(
+								$client,
+								$account,
+								$mailbox,
+								$message->getUid(),
+								true
+							)->getHtmlBody($id);
+						} catch (ServiceException $e) {
+							if ($e->getPrevious() instanceof DoesNotExistException) {
+								$html = '<p>' . htmlspecialchars($this->l10n->t('This message is no longer available on the mail server.'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>';
+							} else {
+								throw $e;
+							}
+						}
 						$cacheInstance->set($imapMessageCacheKey, $html, 600);
 					} finally {
 						$client->logout();
@@ -1054,16 +1086,31 @@ class MessagesController extends Controller {
 				$mailbox->getName(),
 				$message->getUid()
 			);
+		} catch (RemoteMessageMissingException $e) {
+			return \OCA\YooMail\Http\JsonResponse::success([
+				'remoteMissing' => true,
+				'message' => $this->l10n->t('The local message was deleted. The remote message may already have been deleted.'),
+			]);
 		} catch (Throwable $e) {
 			if ($this->isMissingDeleteException($e)) {
 				$this->logger->info("message <$id> was already deleted remotely");
 				return \OCA\YooMail\Http\JsonResponse::success([
-					'missing' => true,
-					'message' => 'This email has already been deleted.',
+					'remoteMissing' => true,
+					'message' => $this->l10n->t('The local message was deleted. The remote message may already have been deleted.'),
 				]);
 			}
 
-			throw $e;
+			$subject = $message->getSubject() ?: $this->l10n->t('(No subject)');
+			$this->logger->error("Could not delete message <$id>: {$e->getMessage()}", [
+				'exception' => $e,
+				'messageId' => $id,
+				'subject' => $subject,
+			]);
+
+			return \OCA\YooMail\Http\JsonResponse::error(
+				$this->l10n->t('Could not delete "%1$s". Reason: %2$s. Please contact your administrator.', [$subject, $e->getMessage()]),
+				Http::STATUS_INTERNAL_SERVER_ERROR
+			);
 		}
 		$this->delegationService->logDelegatedAction($this->currentUserId, $effectiveUserId, "$this->currentUserId deleted message <$id> on behalf of $effectiveUserId");
 		return new JSONResponse();

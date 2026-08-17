@@ -16,13 +16,25 @@ YooMail is a fork of Nextcloud Mail 5.10.12 and keeps the upstream directory str
 yoomail/
 ├── appinfo/          # App metadata (info.xml, routes)
 ├── lib/              # PHP backend (namespace OCA\YooMail)
+├── src/              # Frontend source (vue components, store, service) - rebuildable
 ├── js/               # Frontend build output (yoomail.js etc.)
 ├── css/              # Global styles
+├── img/              # Icons and image assets
 ├── l10n/             # Translations
 ├── realtime/         # Realtime service (Workerman + IMAP IDLE)
 ├── help/             # Docs
+├── package.json      # Frontend deps and build scripts
+├── webpack.*.js      # Build config
+├── tsconfig.json     # TS config
 └── README.md         # Product README
 ```
+
+The repository now ships the frontend source `src/` and build toolchain, so frontend
+changes must be made in source and rebuilt (see section 5). The standalone scripts
+(`yoomail-notifications.js`, `yoomail-realtime-delta.js`, `yoomail-list-cache.js`,
+`admin-basic-settings.js`, `personal-notification-settings.js`) are referenced directly
+by PHP templates and are NOT part of the webpack build - do not let build output
+overwrite them.
 
 ## 2. Global differences from upstream
 
@@ -88,12 +100,53 @@ These are the main frontend-level changes compared to upstream.
 | Thread state handling | fixed the race when opening a thread before its mailbox state was hydrated |
 | Deleted-thread UX | added a safer retry flow and a dedicated `thread-not-found` event path |
 
+### 4.2.1 Delete notification fix (b-2026.08.13)
+
+The backend already distinguished delete outcomes:
+
+- `{ remoteMissing: true, message: '...' }` - local deleted, remote likely gone (HTTP 200)
+- `{ missing: true }` - no longer present locally (HTTP 200)
+- `{ status: 'error', message: 'Could not delete "subject". Reason: ... Please contact your administrator.' }` (HTTP 500 + `x-mail-response` header)
+
+Backend entry points: `lib/Controller/MessagesController.php::destroy`, `lib/Controller/ThreadController.php::delete`.
+
+The frontend now consumes these:
+
+- `src/store/mainStore/actions.js`: `deleteMessage` / `deleteThread` read the return value, detect `remoteMissing` and return `{ remoteMissing, message }`; on failure the backend `error.response.data.message` is surfaced.
+- `src/service/ThreadService.js`: `deleteThread` returns `.data` (matching `MessageService.deleteMessage`).
+- Components show a `showWarning` toast "remote message may already have been deleted" on success-with-`remoteMissing`, and otherwise display the backend's full reason (subject + reason + contact admin):
+  - `src/components/ThreadEnvelope.vue` (`onDelete`)
+  - `src/components/Envelope.vue` (`onDelete`)
+  - `src/components/EnvelopeList.vue` (batch delete)
+  - `src/components/Mailbox.vue` (keyboard-shortcut delete branch)
+
+### 4.2.2 Time-format (12/24h) fix (b-2026.08.17)
+
+Background: the admin can set a default time format (`time_format_default`, 12/24) and
+`PageController` already exposes it via the `time-format` initial state (user preference
+first, falling back to the admin default). But the frontend displayed mail timestamps with
+moment's `LT`/`LLL`/`lll`, which are driven by the **browser locale** — the `time-format`
+preference was never consumed, so changing the admin setting had no visible effect.
+
+Fix (`src/main.js`):
+
+- Added `applyTimeFormat()`: reads `loadState('yoomail', 'time-format', '24')` and calls
+  `updateLocale` on the **`@nextcloud/moment`** instance, overriding the `longDateFormat`
+  entries `LT`/`LLL`/`lll`/`LTS`:
+  - `24` → `HH:mm`; `12` → `h:mm A`
+- Note: `@nextcloud/moment` (moment-with-locales) and `moment-timezone` are **separate
+  singletons** (verified with `import ncMoment from '@nextcloud/moment'`). The time format
+  must be applied to the `@nextcloud/moment` instance; `moment.tz.setDefault` only sets the
+  timezone on the moment-timezone instance.
+- Module order: `import` hoisting ensures `@nextcloud/moment` sets its locale first, then
+  `applyTimeFormat()` runs right after — correct ordering.
+
 ### 4.3 Time display
 
 | File | Change |
 |------|--------|
 | Relative time formatting | now uses the user's Nextcloud timezone instead of the browser timezone |
-| Time-format preference | supports a user-selectable 24h / 12h display preference |
+| Time-format preference | 12/24h display now actually follows the `time-format` preference (`applyTimeFormat()` in `src/main.js`, see 4.2.2) |
 
 ### 4.4 Theme / spacing
 
@@ -115,17 +168,34 @@ Important:
 
 ## 5. Frontend build and packaging
 
-At the moment this repository does not carry a checked-in `src/` tree or local
-frontend build toolchain metadata. The deployed source of truth is therefore
-the committed output under `js/`.
+The repository ships `src/` and the build toolchain (`package.json`, `webpack.common.js`,
+`tsconfig.json`, `babel.config.js`), matching the upstream mail build (entry `src/main.js`,
+output to `js/`, chunks named `yoomail.[name].[contenthash].js`).
 
-Practical rule:
+```bash
+cd <yoomail checkout root>
+npm install
+npm run build          # NODE_ENV=production webpack --config webpack.prod.js
+```
 
-- `js/` is currently the deployed frontend source in this repository
-- when frontend source modules are maintained outside this checkout, upgrades
-  must still regenerate and replace the matching `js/` assets here
-- changing only PHP/CSS without verifying the related `js/` chunk can leave
-  the browser on stale behavior
+Build output:
+
+- `js/yoomail.js` (main entry) + `js/yoomail.<id>.<hash>.js` (lazy chunks)
+- `js/oauthpopup.js`, `js/settings.js`, `js/htmlresponse.js`
+
+Verify before building that `src/main.js` keeps the yoomail customizations
+(`moment.tz.setDefault(loadState('yoomail', 'timezone', 'UTC'))`,
+`applyTimeFormat()` for the 12/24h preference, and
+`generateFilePath('yoomail', '', 'js/')`).
+
+When deploying, replace only the webpack output (`yoomail.js`, `yoomail.*.js`,
+`oauthpopup.js`, `settings.js`, `htmlresponse.js` and their `.map`/`.LICENSE.txt`),
+and keep the standalone scripts listed in section 1.
+
+If the source tree is lost, it can be rebuilt from the `sourcesContent` of the deployed
+`js/*.map` files - prefer the version containing `<template>` for `.vue` files over the
+vue-loader compiled `var render = function` variant. `src/` for `b-2026.08.13` was
+extracted this way (232 files).
 
 ## 6. Upgrade checklist
 
@@ -137,6 +207,7 @@ When rebasing onto a newer upstream Mail version, check these areas first:
 4. `lib/Service/Sync/ImapToDbSynchronizer.php`
 5. `lib/Service/MessageBodyStorage.php`
 6. `appinfo/routes.php`
+7. `src/main.js` (timezone, `applyTimeFormat` 12/24h, app-rename init logic)
 
 Also verify:
 
