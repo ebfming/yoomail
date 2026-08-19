@@ -6,3 +6,6 @@ uploads
 debug
 system/system.php
 node_modules/
+
+build/appstore
+build/artifacts

@@ -25,20 +25,23 @@ This app is built on top of Nextcloud Mail **5.10.12**, with compatibility fixes
 	]]></description>
 	<version>0.1.0</version>
 	<internal-version>b-2026.08.13</internal-version>
-	<licence>agpl</licence>
-	<author homepage="https://github.com/ebfming/yoomail">adam &lt;dev@ebf.hk&gt;</author>
+	<licence>AGPL-3.0-or-later</licence>
+	<author mail="dev@ebf.hk" homepage="https://github.com/ebfming/yoomail">adam</author>
 	<namespace>YooMail</namespace>
 	<documentation>
 		<user>https://github.com/ebfming/yoomail#readme</user>
 		<admin>https://github.com/ebfming/yoomail#readme</admin>
-		<developer>https://github.com/ebfming/yoomail/blob/main/README.md</developer>
+		<developer>https://github.com/ebfming/yoomail/blob/public/README.md</developer>
 	</documentation>
 	<category>social</category>
 	<category>office</category>
 	<website>https://github.com/ebfming/yoomail#readme</website>
 	<bugs>https://github.com/ebfming/yoomail/issues</bugs>
 	<repository type="git">https://github.com/ebfming/yoomail.git</repository>
-	<screenshot>https://user-images.githubusercontent.com/12728974/266270227-86b99bbb-03ea-468b-8408-e248e1730bed.png</screenshot>
+	<!-- YooMail is a secondary development (fork) of the Nextcloud Mail app.
+	     This records the upstream version this build is based on.
+	<base-app-id>mail</base-app-id>
+	<base-app-version>5.10.12</base-app-version> -->
 	<dependencies>
 		<php min-version="8.1" max-version="8.5" />
 		<nextcloud min-version="32" max-version="35" />
@@ -87,15 +90,11 @@ This app is built on top of Nextcloud Mail **5.10.12**, with compatibility fixes
 		<command>OCA\YooMail\Command\RunMetaEstimator</command>
 	</commands>
 	<settings>
-		<admin-section>OCA\YooMail\Settings\AdminSection</admin-section>
 		<admin>OCA\YooMail\Settings\AdminSettings</admin>
-		<personal-section>OCA\YooMail\Settings\PersonalSection</personal-section>
+		<admin-section>OCA\YooMail\Settings\AdminSection</admin-section>
 		<personal>OCA\YooMail\Settings\PersonalSettings</personal>
+		<personal-section>OCA\YooMail\Settings\PersonalSection</personal-section>
 	</settings>
-	<!-- YooMail is a secondary development (fork) of the Nextcloud Mail app.
-	     This records the upstream version this build is based on. -->
-	<base-app-id>mail</base-app-id>
-	<base-app-version>5.10.12</base-app-version>
 	<navigations>
 		<navigation>
 			<name>YooMail</name>
