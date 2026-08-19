@@ -15,7 +15,7 @@
 		return
 	}
 
-	const requestToken = document.head.getAttribute('data-requesttoken') || ''
+	const requestToken = OC.requestToken || document.head.getAttribute('data-requesttoken') || ''
 
 	const apiUrl = (path) => OC.generateUrl(`/apps/${appId}${path}`)
 
@@ -25,6 +25,7 @@
 			headers: {
 				'Accept': 'application/json',
 				'Content-Type': 'application/json',
+				'X-Requested-With': 'XMLHttpRequest',
 				'requesttoken': requestToken,
 			},
 			body: options.body ? JSON.stringify(options.body) : undefined,

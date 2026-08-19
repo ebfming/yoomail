@@ -156,6 +156,12 @@ SPDX-FileCopyrightText = "2018-2026 Google LLC"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
+path = ["img/yoomail.svg", "img/yoomail-dark.svg"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 YooMail contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
 path = ["img/favicon-notification.png", "img/favicon-notification.svg", "img/favicon-touch-notification.png", "img/favicon-touch-notification.svg"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2018-2024 Google LLC, 2022 Nextcloud GmbH and Nextcloud contributors"

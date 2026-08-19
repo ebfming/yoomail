@@ -13,6 +13,7 @@ use OCA\YooMail\AppInfo\Application;
 use OCA\YooMail\Service\NotificationSettingsService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
@@ -48,6 +49,7 @@ class NotificationSettingsController extends Controller {
 	}
 
 	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function getSettings(): JSONResponse {
 		if ($this->userId === null) {
 			return new JSONResponse(['message' => 'Not authenticated'], 401);

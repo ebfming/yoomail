@@ -16,7 +16,6 @@
 
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import { showError } from '@nextcloud/dialogs'
 import logger from './logger.js'
 
 const RECONNECT_DELAY_MS = 5000
@@ -90,7 +89,19 @@ class RealtimeClient {
 			return
 		}
 
+		if (msg.type === 'sync-done') {
+			logger.debug('mail-realtime: sync done', msg)
+			if (!window.OCA?.YooMailRealtime?.applySyncDone?.(msg)) {
+				this.onMailboxChanged(msg)
+			}
+			return
+		}
+
 		if (msg.type === 'mailbox-changed') {
+			if (msg.sync === 'started') {
+				logger.debug('mail-realtime: mailbox changed, waiting for sync-done', msg)
+				return
+			}
 			logger.debug('mail-realtime: mailbox changed', msg)
 			this.onMailboxChanged(msg)
 		}
@@ -99,7 +110,7 @@ class RealtimeClient {
 	onMailboxChanged({ mailboxId, accountId }) {
 		// The push event carries accountId (+ optionally mailboxId in the
 		// future). Refresh the current mailbox list(s) for this account.
-		const store = window.OCA?.MailRealtime?.getMainStore?.()
+		const store = window.OCA?.YooMailRealtime?.getMainStore?.()
 		if (!store) {
 			logger.warn('mail-realtime: main store not available')
 			return

@@ -5,3 +5,4 @@ var
 uploads
 debug
 system/system.php
+node_modules/

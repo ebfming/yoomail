@@ -476,7 +476,7 @@ export default {
 		},
 
 		showUnreadCounter() {
-			if (this.filter === 'starred' || this.mailbox.specialRole === 'trash') {
+			if (this.filter === 'starred' || ['junk', 'trash'].includes(this.mailbox.specialRole)) {
 				return false
 			}
 			return this.mailbox.unread > 0 || this.subCounter > 0

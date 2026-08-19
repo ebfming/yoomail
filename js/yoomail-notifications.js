@@ -15,6 +15,7 @@
 		toastHost.id = 'yoomail-notification-toast-host'
 		document.body.appendChild(toastHost)
 
+		const requestToken = OC.requestToken || document.head.getAttribute('data-requesttoken') || ''
 		const audioCache = {}
 		const recentMessageIds = new Map()
 
@@ -33,6 +34,8 @@
 				method: 'GET',
 				headers: {
 					'Accept': 'application/json',
+					'X-Requested-With': 'XMLHttpRequest',
+					'requesttoken': requestToken,
 				},
 				credentials: 'same-origin',
 			}).then(function(response) {

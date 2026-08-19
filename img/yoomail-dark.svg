@@ -1,6 +1,9 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="32px" height="32px" viewBox="0 0 32 32" version="1.1">
-<g id="surface1">
-<path style=" stroke:none;fill-rule:nonzero;fill:#000;fill-opacity:1;" d="M 26.667969 5.332031 L 5.332031 5.332031 C 3.867188 5.332031 2.679688 6.535156 2.679688 8 L 2.667969 24 C 2.667969 25.464844 3.867188 26.667969 5.332031 26.667969 L 26.667969 26.667969 C 28.132812 26.667969 29.332031 25.464844 29.332031 24 L 29.332031 8 C 29.332031 6.535156 28.132812 5.332031 26.667969 5.332031 Z M 26.667969 10.667969 L 16 17.332031 L 5.332031 10.667969 L 5.332031 8 L 16 14.667969 L 26.667969 8 Z M 26.667969 10.667969 "/>
-</g>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="YooMail">
+	<path fill="#000" d="M4.75 6.5h22.5c1.24 0 2.25 1.01 2.25 2.25v14.5c0 1.24-1.01 2.25-2.25 2.25H4.75A2.25 2.25 0 0 1 2.5 23.25V8.75C2.5 7.51 3.51 6.5 4.75 6.5Zm.75 4.05v11.7c0 .14.11.25.25.25h20.5c.14 0 .25-.11.25-.25v-11.7L16 17.12 5.5 10.55Zm1.84-1.05L16 14.91l8.66-5.41H7.34Z"/>
+	<rect width="17" height="8.5" x="13.75" y="20.25" fill="#c77700" rx="4.25"/>
+	<g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.15">
+		<path d="m16.8 22.65 1.45 2.65m1.3-2.65-2.1 4.15"/>
+		<circle cx="22.65" cy="24.6" r="1.25"/>
+		<circle cx="26.7" cy="24.6" r="1.25"/>
+	</g>
 </svg>

@@ -22,7 +22,7 @@ class AdminSection implements IIconSection {
 
 	#[\Override]
 	public function getIcon(): string {
-		return $this->urlGenerator->imagePath('yoomail', 'yoomail.svg');
+		return $this->urlGenerator->imagePath('yoomail', 'yoomail-dark.svg');
 	}
 
 	#[\Override]

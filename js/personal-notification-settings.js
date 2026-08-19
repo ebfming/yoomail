@@ -10,7 +10,7 @@
 			return
 		}
 
-		const requestToken = document.head.getAttribute('data-requesttoken') || ''
+		const requestToken = OC.requestToken || document.head.getAttribute('data-requesttoken') || ''
 		let notificationData = {}
 		try {
 			notificationData = JSON.parse(dataNode.textContent || '{}')
@@ -90,6 +90,7 @@
 				headers: {
 					'Accept': 'application/json',
 					'Content-Type': 'application/json',
+					'X-Requested-With': 'XMLHttpRequest',
 					'requesttoken': requestToken,
 				},
 				credentials: 'same-origin',

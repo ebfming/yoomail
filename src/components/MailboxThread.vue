@@ -318,9 +318,12 @@ export default {
 		 * @return {string|undefined}
 		 */
 		followUpQuery() {
+			if (!this.mainStore.followUpFeatureAvailable) {
+				return undefined
+			}
+
 			const tag = this.mainStore.getFollowUpTag
 			if (!tag) {
-				logger.warn('No follow-up tag available')
 				return undefined
 			}
 
