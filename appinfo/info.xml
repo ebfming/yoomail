@@ -38,6 +38,7 @@ This app is built on top of Nextcloud Mail **5.10.12**, with compatibility fixes
 	<website>https://github.com/ebfming/yoomail#readme</website>
 	<bugs>https://github.com/ebfming/yoomail/issues</bugs>
 	<repository type="git">https://github.com/ebfming/yoomail.git</repository>
+	<screenshot>https://raw.githubusercontent.com/ebfming/yoomail/public/screenshots/yoomail-screenshot-1.jpg</screenshot>
 	<!-- YooMail is a secondary development (fork) of the Nextcloud Mail app.
 	     This records the upstream version this build is based on.
 	<base-app-id>mail</base-app-id>
