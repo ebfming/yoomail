@@ -274,6 +274,17 @@
 			return messages
 		}
 
+		function isInboxMessage(message) {
+			const mailboxId = Number(message?.mailboxId)
+			if (!Number.isFinite(mailboxId)) {
+				return false
+			}
+
+			const store = window.OCA?.YooMailRealtime?.getMainStore?.()
+			const mailbox = store?.getMailbox?.(mailboxId)
+			return mailbox?.specialRole === 'inbox'
+		}
+
 		function reportTrackedResult(meta, status, payload) {
 			if (!meta) {
 				return
@@ -281,7 +292,7 @@
 
 			if (meta.type === 'mail-sync' && status === 200) {
 				const messages = readNewMessagesFromPayload(payload)
-				if (messages.length > 0) {
+				if (messages.length > 0 && messages.some(isInboxMessage)) {
 					handleNewMail({ messages: messages })
 				}
 				return

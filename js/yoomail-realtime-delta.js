@@ -144,11 +144,16 @@
 		})
 	}
 
-	function dispatchNewMailEvent(mailboxId, delta) {
+	function dispatchNewMailEvent(store, mailboxId, delta) {
 		var messages = normalizeEnvelopes(delta?.newMessages, {
 			databaseId: mailboxId,
 		})
 		if (messages.length === 0) {
+			return
+		}
+
+		var mailbox = store?.getMailbox?.(mailboxId)
+		if (mailbox?.specialRole !== 'inbox') {
 			return
 		}
 
@@ -169,8 +174,6 @@
 			return false
 		}
 
-		dispatchNewMailEvent(mailboxId, delta)
-
 		if (!isMailboxRoute()) {
 			return false
 		}
@@ -179,6 +182,8 @@
 		if (!store) {
 			return false
 		}
+
+		dispatchNewMailEvent(store, mailboxId, delta)
 
 		patchMailboxUpdateMerge(store)
 		patchFetchThreadRecovery(store)

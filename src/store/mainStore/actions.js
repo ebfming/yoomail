@@ -33,6 +33,7 @@ import {
 } from 'ramda'
 import Vue from 'vue'
 import MailboxLockedError from '../../errors/MailboxLockedError.js'
+import MailboxNotCachedError from '../../errors/MailboxNotCachedError.js'
 import { matchError } from '../../errors/match.js'
 import SyncIncompleteError from '../../errors/SyncIncompleteError.js'
 import { handleHttpAuthErrors } from '../../http/sessionExpiryHandler.js'
@@ -170,9 +171,9 @@ const addMailboxToState = curry((mailboxes, account, mailbox) => {
 		.filter((mb) => mb.accountId === account.id)
 		.find((mb) => mb.name === mailbox.path)
 	if (mailbox.path === '' || !parent) {
-		account.mailboxes.push(mailbox.databaseId)
+		account.mailboxes = uniq(account.mailboxes.concat([mailbox.databaseId]))
 	} else {
-		parent.mailboxes.push(mailbox.databaseId)
+		parent.mailboxes = uniq(parent.mailboxes.concat([mailbox.databaseId]))
 	}
 
 	Object.defineProperty(mailbox, 'isSubscribed', {
@@ -982,6 +983,10 @@ export default function mainStoreActions() {
 									init,
 								}))
 							},
+							[MailboxNotCachedError.getName()]: (error) => {
+								logger.info('Sync failed because the mailbox is not cached yet', { error, mailboxId, query, init })
+								throw error
+							},
 							default(error) {
 								logger.error('Could not sync envelopes: ' + error.message, { error })
 								throw error
@@ -1396,6 +1401,11 @@ export default function mainStoreActions() {
 			newName,
 		}) {
 			return handleHttpAuthErrors(async () => {
+				if (mailbox.name === newName) {
+					logger.debug(`mailbox ${mailbox.databaseId} already has name ${newName}, skipping rename`, { mailbox })
+					return mailbox
+				}
+
 				const newMailbox = await patchMailbox(mailbox.databaseId, {
 					name: newName,
 				})
@@ -1985,6 +1995,9 @@ export default function mainStoreActions() {
 
 			// Travers through the account and the full mailbox tree to find any dangling pointers
 			const removeRec = (parent) => {
+				if (!parent) {
+					return
+				}
 				parent.mailboxes = parent.mailboxes.filter((mbId) => mbId !== id)
 				parent.mailboxes.map((mbid) => removeRec(this.mailboxes[mbid]))
 			}

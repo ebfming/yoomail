@@ -734,6 +734,10 @@ export default {
 		},
 
 		async renameMailbox() {
+			if (this.renameSaving) {
+				return
+			}
+
 			this.renameInput = false
 			this.renameSaving = true
 
@@ -741,6 +745,9 @@ export default {
 				let newName = this.mailboxName
 				if (this.mailbox.path) {
 					newName = this.mailbox.path + this.mailbox.delimiter + newName
+				}
+				if (newName === this.mailbox.name) {
+					return
 				}
 				await this.mainStore.renameMailbox({
 					account: this.account,

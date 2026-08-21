@@ -6,6 +6,7 @@ import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 import { curry } from 'ramda'
 import { convertAxiosError } from '../errors/convert.js'
+import MailboxNotCachedError from '../errors/MailboxNotCachedError.js'
 import SyncIncompleteError from '../errors/SyncIncompleteError.js'
 import { parseErrorResponse } from '../http/ErrorResponseParser.js'
 
@@ -100,6 +101,9 @@ export async function syncEnvelopes(accountId, id, ids, lastMessageTimestamp, qu
 			stats: response.data.stats,
 		}
 	} catch (e) {
+		if (e.response?.status === 428) {
+			throw new MailboxNotCachedError('Mailbox is not cached yet')
+		}
 		throw convertAxiosError(e)
 	}
 }

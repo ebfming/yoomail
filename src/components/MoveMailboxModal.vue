@@ -56,6 +56,10 @@ export default {
 		},
 
 		async onMove() {
+			if (this.moving) {
+				return
+			}
+
 			this.moving = true
 			if (this.mailbox.id !== this.destMailboxId) {
 				try {

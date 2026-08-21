@@ -229,17 +229,17 @@ export default {
 	},
 
 	methods: {
-		initializeCache() {
+		async initializeCache() {
 			this.loadingCacheInitialization = true
 			this.error = false
 
 			logger.debug(`syncing folder ${this.mailbox.databaseId} (${this.query}) during cache initalization`)
-			this.sync(true)
-				.then(() => {
-					this.loadingCacheInitialization = false
-
-					return this.loadEnvelopes()
-				})
+			try {
+				await this.sync(true)
+				return await this.loadEnvelopes()
+			} finally {
+				this.loadingCacheInitialization = false
+			}
 		},
 
 		async loadEnvelopes() {
@@ -527,23 +527,38 @@ export default {
 					mailboxId: this.mailbox.databaseId,
 					query: this.searchQuery,
 					init,
-				})
-			} catch (error) {
-				matchError(error, {
-					[MailboxLockedError.getName()](error) {
-						logger.info('Background sync failed because the folder is locked', {
-							error,
-							init,
+			})
+		} catch (error) {
+			const handled = await matchError(error, {
+				[MailboxLockedError.getName()](error) {
+					logger.info('Background sync failed because the folder is locked', {
+						error,
+						init,
+					})
+					return false
+				},
+				[MailboxNotCachedError.getName()]: async (error) => {
+					logger.info('Background sync found an uncached folder, initializing cache', {
+						error,
+						init,
 						})
+						if (!init) {
+							await this.initializeCache()
+							return true
+						}
+						return false
 					},
 					default(error) {
-						logger.error('Could not sync envelopes: ' + error.message, {
-							error,
-							init,
-						})
-					},
-				})
+					logger.error('Could not sync envelopes: ' + error.message, {
+						error,
+						init,
+					})
+					return false
+				},
+			})
+			if (!handled) {
 				throw error
+			}
 			} finally {
 				this.refreshing = false
 				logger.debug(`finished sync'ing folder ${this.mailbox.databaseId} (${this.searchQuery})`, { init })
