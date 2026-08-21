@@ -117,15 +117,33 @@ class SyncService {
 
 		$client = $this->clientFactory->getClient($account);
 
-		$this->synchronizer->sync(
-			$account,
-			$client,
-			$mailbox,
-			$this->logger,
-			$criteria,
-			$knownIds === null ? null : $this->messageMapper->findUidsForIds($mailbox, $knownIds),
-			!$partialOnly
-		);
+		try {
+			$this->synchronizer->sync(
+				$account,
+				$client,
+				$mailbox,
+				$this->logger,
+				$criteria,
+				$knownIds === null ? null : $this->messageMapper->findUidsForIds($mailbox, $knownIds),
+				!$partialOnly
+			);
+		} catch (MailboxNotCachedException $e) {
+			// The mailbox no longer exists on the server; the synchronizer
+			// already removed the stale local record. Return an empty result
+			// so the frontend treats the mailbox as empty and the mailbox
+			// disappears after the next mailbox-list refresh.
+			$client->logout();
+
+			$query = $filter === null ? null : $this->filterStringParser->parse($filter);
+			return $this->getDatabaseSyncChanges(
+				$account,
+				$mailbox,
+				$knownIds ?? [],
+				$lastMessageTimestamp,
+				$sortOrder,
+				$query
+			);
+		}
 
 		$this->mailboxSync->syncStats($client, $mailbox);
 

@@ -16,6 +16,11 @@ All releases in this repository currently build on top of upstream
   Some providers (such as Tencent ExMail / QQ Mail) reject IMAP
   `SUBSCRIBE` / `UNSUBSCRIBE`. YooMail now logs a warning, refreshes the
   mailbox list, and returns the current state instead of failing the request.
+- Fixed mailbox sync returning HTTP 500 / 428 when a folder was deleted on
+  the server (e.g. via another IMAP/webmail client) but a stale record
+  remained locally. The synchronizer now verifies the mailbox with a LIST
+  call, removes the stale local record, and returns an empty result so the
+  folder disappears after the next mailbox-list refresh.
 
 ### Changed
 

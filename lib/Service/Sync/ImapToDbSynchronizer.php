@@ -278,7 +278,34 @@ class ImapToDbSynchronizer {
 		// different key and getSyncToken()/sync() return a null UIDVALIDITY.
 		// Selecting the mailbox first populates the status cache under the
 		// requested name, fixing the "UID validity changed" wipe loop.
-		$client->openMailbox($mailbox->getName(), \Horde_Imap_Client::OPEN_READONLY);
+		try {
+			$client->openMailbox($mailbox->getName(), \Horde_Imap_Client::OPEN_READONLY);
+		} catch (Horde_Imap_Client_Exception $e) {
+			// YooMail: the mailbox may have been removed on the server (e.g. via
+			// another IMAP/webmail client). Verify with a LIST call before
+			// cleaning up the stale local record, so a transient server error is
+			// not mistaken for a deleted mailbox.
+			try {
+				$folders = $client->listMailboxes(
+					$mailbox->getName(),
+					Horde_Imap_Client::MBOX_ALL,
+					['flat' => true]
+				);
+			} catch (Horde_Imap_Client_Exception) {
+				// Cannot verify the mailbox state; rethrow the original error.
+				throw $e;
+			}
+			if (count($folders) === 0) {
+				$this->logger->warning(
+					"Mailbox '{$mailbox->getName()}' no longer exists on the server, removing stale local record",
+					['app' => 'yoomail']
+				);
+				$this->resetCache($account, $mailbox);
+				$this->mailboxMapper->delete($mailbox);
+				throw MailboxNotCachedException::from($mailbox);
+			}
+			throw $e;
+		}
 
 		// There is no partial sync when using QRESYNC. As per RFC the client will always pull
 		// all changes. This is a cheap operation when using QRESYNC as the server keeps track
