@@ -21,6 +21,11 @@ All releases in this repository currently build on top of upstream
   remained locally. The synchronizer now verifies the mailbox with a LIST
   call, removes the stale local record, and returns an empty result so the
   folder disappears after the next mailbox-list refresh.
+- Fixed initial mailbox sync failing with `Class "OCA\YooMail\IMAP\DateTime"
+  not found`. The new `fetch_range_days` initial-sync filter used an
+  unqualified `new DateTime(...)` which resolved to a non-existent class in
+  the `OCA\YooMail\IMAP` namespace; the global `DateTime` class is now
+  imported explicitly.
 
 ### Changed
 

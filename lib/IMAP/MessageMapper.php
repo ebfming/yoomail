@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\YooMail\IMAP;
 
+use DateTime;
 use DateTimeImmutable;
 use DateTimeZone;
 use Horde_Imap_Client;
@@ -125,7 +126,7 @@ class MessageMapper {
 		if ($receivedSinceTimestamp !== null) {
 			$searchQuery = new Horde_Imap_Client_Search_Query();
 			$searchQuery->dateSearch(
-				(new DateTimeImmutable('@' . $receivedSinceTimestamp))->setTimezone(new DateTimeZone('UTC')),
+				(new DateTime('@' . $receivedSinceTimestamp))->setTimezone(new DateTimeZone('UTC')),
 				Horde_Imap_Client_Search_Query::DATE_SINCE,
 				false
 			);
