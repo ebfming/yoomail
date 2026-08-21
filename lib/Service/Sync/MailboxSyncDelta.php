@@ -10,7 +10,7 @@ namespace OCA\YooMail\Service\Sync;
  * Carries the lists of new/changed/vanished messages produced by one sync
  * pass so the caller can apply them to the database cache in one go.
  *
- * @version b-2026.08.13
+ * @version b-2026.08.21
  */
 final class MailboxSyncDelta {
 	/**

@@ -19,7 +19,7 @@ use Psr\Log\LoggerInterface;
  * this is hosted by one Workerman worker process per account (worker count
  * == number of accounts), so a blocking IMAP socket never blocks the
  * WebSocket event loop.
- * @version b-2026.08.13
+ * @version b-2026.08.21
  */
 class ImapIdleManager
 {

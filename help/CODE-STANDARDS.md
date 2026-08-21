@@ -53,13 +53,13 @@ DocBlock style comments.
   git branch --show-current
   ```
 
-  Example for a class on branch `b-2026.08.13`:
+  Example for a class on branch `b-2026.08.21`:
 
   ```php
   /**
    * Orchestrates the realtime service.
    *
-   * @version b-2026.08.13
+   * @version b-2026.08.21
    */
   final class RealtimeServer { ... }
   ```

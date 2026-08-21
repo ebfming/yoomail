@@ -21,7 +21,7 @@ use Psr\Log\LoggerInterface;
  * many queries inside one long-lived CLI process (unbuffered query /
  * transaction state leaks). Running each sync in its own short-lived
  * process keeps the database connection clean and avoids those errors.
- * @version b-2026.08.13
+ * @version b-2026.08.21
  */
 class RealtimeSyncService
 {

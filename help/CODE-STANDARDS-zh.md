@@ -41,13 +41,13 @@
   git branch --show-current
   ```
 
-  例如分支为 `b-2026.08.13` 时的类注释：
+  例如分支为 `b-2026.08.21` 时的类注释：
 
   ```php
   /**
    * Orchestrates the realtime service.
    *
-   * @version b-2026.08.13
+   * @version b-2026.08.21
    */
   final class RealtimeServer { ... }
   ```

@@ -6,7 +6,7 @@ namespace OCA\YooMailRealtime;
 
 /**
  * Keeps track of which user has which WebSocket connections.
- * @version b-2026.08.13
+ * @version b-2026.08.21
  */
 class UserConnectionRegistry
 {

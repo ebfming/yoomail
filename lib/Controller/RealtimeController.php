@@ -24,7 +24,7 @@ use OCP\IRequest;
  * service validates it with the same secret, so no shared cache is needed.
  *
  * Token format: base64url(userId).base64url(expiry).base64url(hmac)
- * @version b-2026.08.13
+ * @version b-2026.08.21
  */
 class RealtimeController extends Controller {
 	private IConfig $config;
