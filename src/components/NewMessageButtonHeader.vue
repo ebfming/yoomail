@@ -35,12 +35,14 @@
 </template>
 
 <script>
+import { showInfo } from '@nextcloud/dialogs'
 import { NcButton as ButtonVue } from '@nextcloud/vue'
 import { mapStores } from 'pinia'
 import IconLoading from '@nextcloud/vue/components/NcLoadingIcon'
 import IconAdd from 'vue-material-design-icons/Plus.vue'
 import IconRefresh from 'vue-material-design-icons/Refresh.vue'
 import logger from '../logger.js'
+import { PRIORITY_INBOX_ID } from '../store/constants.js'
 import useMainStore from '../store/mainStore.js'
 
 export default {
@@ -74,20 +76,44 @@ export default {
 		},
 
 		account() {
-			return this.mainStore.getAccount(this.currentMailbox.accountId)
+			return this.currentMailbox && this.mainStore.getAccount(this.currentMailbox.accountId)
 		},
 	},
 
 	methods: {
 		async refreshMailbox() {
-			if (this.refreshing === true) {
+			if (this.refreshing === true || !this.currentMailbox) {
 				logger.debug('already sync\'ing mailbox.. aborting')
 				return
 			}
 			this.refreshing = true
 			try {
-				await this.mainStore.syncEnvelopes({ mailboxId: this.currentMailbox.databaseId })
+				const currentMailbox = this.currentMailbox
+				if (currentMailbox.isUnified) {
+					const accounts = this.mainStore.getAccounts.filter((account) => !account.isUnified)
+					await Promise.all(accounts.map((account) => this.mainStore.syncMailboxesForAccount(account)))
+					await this.mainStore.syncInboxes()
+					logger.debug('Unified mailbox is syncing')
+					return
+				}
+
+				if (!this.account || this.account.isUnified) {
+					logger.warn('could not determine the IMAP account for the current mailbox', { mailbox: currentMailbox })
+					return
+				}
+
+				const mailboxId = currentMailbox.databaseId
 				await this.mainStore.syncMailboxesForAccount(this.account)
+				const synchronizedMailbox = this.mainStore.getMailbox(mailboxId)
+				if (!synchronizedMailbox) {
+					showInfo(t('yoomail', 'This folder no longer exists and was removed from the list.'))
+					await this.$router.replace({
+						name: 'mailbox',
+						params: { mailboxId: PRIORITY_INBOX_ID },
+					})
+					return
+				}
+				await this.mainStore.syncEnvelopes({ mailboxId: synchronizedMailbox.databaseId })
 				logger.debug('Current folder is sync\'ing ')
 			} catch (error) {
 				logger.error('could not sync current folder', { error })

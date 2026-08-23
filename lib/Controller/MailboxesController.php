@@ -341,7 +341,14 @@ class MailboxesController extends Controller {
 			return new JSONResponse([], Http::STATUS_FORBIDDEN);
 		}
 		$account = $this->accountService->find($effectiveUserId, $accountId);
-		$mailbox = $this->mailManager->createMailbox($account, $name);
+		try {
+			$mailbox = $this->mailManager->createMailbox($account, $name);
+		} catch (ServiceException $e) {
+			return new JSONResponse([
+				'message' => $this->l10n->t('Unable to create mailbox. The name likely contains invalid characters. Please try another name.'),
+				'details' => $e->getMessage(),
+			], Http::STATUS_BAD_REQUEST);
+		}
 		$id = $mailbox->getId();
 		$this->delegationService->logDelegatedAction($this->currentUserId, $effectiveUserId, "$this->currentUserId created mailbox: $id on behalf of $effectiveUserId");
 

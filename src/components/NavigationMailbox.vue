@@ -111,7 +111,7 @@
 				</template>
 			</ActionButton>
 			<ActionButton
-				v-if="subfolderLabel && !account.isUnified && hasDelimiter && mailbox.specialRole !== 'flagged' && hasSubmailboxActionAcl"
+				v-if="subfolderLabel && canCreateSubMailbox"
 				@click="openCreateMailbox">
 				<template #icon>
 					<IconAdd :size="20" />
@@ -119,7 +119,7 @@
 				{{ t('yoomail', 'Add subfolder') }}
 			</ActionButton>
 			<ActionInput
-				v-if="subfolderInput"
+				v-if="subfolderInput && canCreateSubMailbox"
 				:value.sync="createMailboxName"
 				@submit.prevent.stop="createMailbox">
 				<template #icon>
@@ -205,7 +205,7 @@
 			<ActionButton
 				v-if="mailbox.specialRole !== 'flagged' && !account.isUnified && hasClearMailboxAcl"
 				:close-after-click="true"
-				@click="clearMailbox">
+				@click="openMailboxConfirmation('clear')">
 				<template #icon>
 					<IconDeleteOutline :size="20" />
 				</template>
@@ -214,7 +214,7 @@
 
 			<ActionButton
 				v-if="!account.isUnified && !mailbox.specialRole && !hasSubMailboxes && hasDeleteAcl"
-				@click="deleteMailbox">
+				@click="openMailboxConfirmation('delete')">
 				<template #icon>
 					<IconDeleteOutline :size="20" />
 				</template>
@@ -235,6 +235,12 @@
 				:account="account"
 				:mailbox="mailbox"
 				@close="onCloseMoveModal" />
+			<NcDialog
+				v-if="pendingMailboxAction"
+				:name="mailboxConfirmationTitle"
+				:message="mailboxConfirmationMessage"
+				:buttons="mailboxConfirmationButtons"
+				@closing="closeMailboxConfirmation" />
 		</template>
 		<!-- submailboxes -->
 		<NavigationMailbox
@@ -249,7 +255,7 @@
 
 import { showError, showInfo } from '@nextcloud/dialogs'
 import { translatePlural as n } from '@nextcloud/l10n'
-import { NcActionButton as ActionButton, NcActionCheckbox as ActionCheckbox, NcActionInput as ActionInput, NcActionText as ActionText, NcAppNavigationItem as AppNavigationItem, NcCounterBubble as CounterBubble, NcLoadingIcon as IconLoading } from '@nextcloud/vue'
+import { NcActionButton as ActionButton, NcActionCheckbox as ActionCheckbox, NcActionInput as ActionInput, NcActionText as ActionText, NcAppNavigationItem as AppNavigationItem, NcCounterBubble as CounterBubble, NcDialog, NcLoadingIcon as IconLoading } from '@nextcloud/vue'
 import { mapStores } from 'pinia'
 import AlarmIcon from 'vue-material-design-icons/Alarm.vue'
 import IconArchive from 'vue-material-design-icons/ArchiveArrowDown.vue'
@@ -327,6 +333,7 @@ export default {
 		IconWrench,
 		ImportantIcon,
 		IconLoading,
+		NcDialog,
 		MoveMailboxModal,
 		AlarmIcon,
 	},
@@ -376,6 +383,7 @@ export default {
 			UNIFIED_INBOX_ID,
 			createMailboxName: '',
 			repairing: false,
+			pendingMailboxAction: null,
 		}
 	},
 
@@ -447,6 +455,34 @@ export default {
 			return t('yoomail', 'Loading …')
 		},
 
+		mailboxConfirmationTitle() {
+			return this.pendingMailboxAction === 'clear'
+				? t('yoomail', 'Clear mailbox {name}', { name: this.mailbox.displayName })
+				: t('yoomail', 'Delete folder')
+		},
+
+		mailboxConfirmationMessage() {
+			return this.pendingMailboxAction === 'clear'
+				? t('yoomail', 'All messages in mailbox will be deleted.')
+				: t('yoomail', 'The folder and all messages in it will be deleted.')
+		},
+
+		mailboxConfirmationButtons() {
+			return [
+				{
+					label: t('yoomail', 'Cancel'),
+					callback: () => this.closeMailboxConfirmation(),
+				},
+				{
+					label: this.pendingMailboxAction === 'clear'
+						? t('yoomail', 'Clear folder')
+						: t('yoomail', 'Delete folder {name}', { name: this.mailbox.displayName }),
+					type: 'error',
+					callback: () => this.confirmMailboxAction(),
+				},
+			]
+		},
+
 		isDroppableSpecialMailbox() {
 			if (this.filter === 'starred') {
 				return false
@@ -509,6 +545,14 @@ export default {
 
 		hasSubmailboxActionAcl() {
 			return mailboxHasRights(this.mailbox, 'k')
+		},
+
+		canCreateSubMailbox() {
+			return !this.account.isUnified
+				&& this.hasDelimiter
+				&& this.mailbox.specialRole !== 'flagged'
+				&& this.mailbox.selectable !== false
+				&& this.hasSubmailboxActionAcl
 		},
 
 		hasDeleteAcl() {
@@ -584,9 +628,23 @@ export default {
 		},
 
 		async createMailbox(e) {
+			if (!this.canCreateSubMailbox) {
+				this.subfolderInput = false
+				this.subfolderSaving = false
+				showError(t('yoomail', 'Unable to create a subfolder below this folder.'))
+				logger.warn('refusing to create subfolder below non-creatable mailbox', { mailbox: this.mailbox })
+				return
+			}
+
 			this.subfolderInput = false
 			this.subfolderSaving = true
-			const name = this.createMailboxName
+			const name = this.createMailboxName.trim()
+			if (!name) {
+				this.subfolderSaving = false
+				this.subfolderLabel = true
+				showError(t('yoomail', 'Folder name cannot be empty.'))
+				return
+			}
 			const withPrefix = this.mailbox.name + this.mailbox.delimiter + name
 			logger.info(`creating mailbox ${withPrefix} as submailbox of ${this.mailbox.databaseId}`)
 
@@ -596,6 +654,7 @@ export default {
 					name: withPrefix,
 				})
 			} catch (error) {
+				showError(t('yoomail', 'Unable to create mailbox. The name likely contains invalid characters. Please try another name.'))
 				logger.error(`could not create mailbox ${withPrefix}`, { error })
 				throw error
 			} finally {
@@ -609,6 +668,12 @@ export default {
 		},
 
 		openCreateMailbox() {
+			if (!this.canCreateSubMailbox) {
+				showError(t('yoomail', 'Unable to create a subfolder below this folder.'))
+				logger.warn('refusing to open subfolder form for non-creatable mailbox', { mailbox: this.mailbox })
+				return
+			}
+
 			this.subfolderLabel = false
 			this.createMailboxName = ''
 			this.subfolderInput = true
@@ -678,59 +743,39 @@ export default {
 			}
 		},
 
-		clearMailbox() {
-			const id = this.mailbox.databaseId
-			OC.dialogs.confirmDestructive(
-				t('yoomail', 'All messages in mailbox will be deleted.'),
-				t('yoomail', 'Clear mailbox {name}', { name: this.mailbox.displayName }),
-				{
-					type: OC.dialogs.YES_NO_BUTTONS,
-					confirm: t('yoomail', 'Clear folder'),
-					confirmClasses: 'error',
-					cancel: t('yoomail', 'Cancel'),
-				},
-				(result) => {
-					if (result) {
-						return this.mainStore.clearMailbox({ mailbox: this.mailbox })
-							.then(() => {
-								logger.info(`mailbox ${id} cleared`)
-							})
-							.catch((error) => logger.error('could not clear folder', { error }))
-					}
-				},
-			)
+		openMailboxConfirmation(action) {
+			this.pendingMailboxAction = action
 		},
 
-		deleteMailbox() {
+		closeMailboxConfirmation() {
+			this.pendingMailboxAction = null
+		},
+
+		async confirmMailboxAction() {
 			const id = this.mailbox.databaseId
-			logger.info('delete folder', { mailbox: this.mailbox })
-			OC.dialogs.confirmDestructive(
-				t('yoomail', 'The folder and all messages in it will be deleted.'),
-				t('yoomail', 'Delete folder'),
-				{
-					type: OC.dialogs.YES_NO_BUTTONS,
-					confirm: t('yoomail', 'Delete folder {name}', { name: this.mailbox.displayName }),
-					confirmClasses: 'error',
-					cancel: t('yoomail', 'Cancel'),
-				},
-				(result) => {
-					if (result) {
-						return this.mainStore.deleteMailbox({ mailbox: this.mailbox })
-							.then(() => {
-								logger.info(`mailbox ${id} deleted`)
-								if (parseInt(this.$route.params.mailboxId, 10) === this.mailbox.databaseId) {
-									this.$router.push({
-										name: 'mailbox',
-										params: {
-											mailboxId: PRIORITY_INBOX_ID,
-										},
-									})
-								}
-							})
-							.catch((error) => logger.error('could not delete folder', { error }))
-					}
-				},
-			)
+			const action = this.pendingMailboxAction
+			this.closeMailboxConfirmation()
+			try {
+				if (action === 'clear') {
+					await this.mainStore.clearMailbox({ mailbox: this.mailbox })
+					logger.info(`mailbox ${id} cleared`)
+					return
+				}
+
+				logger.info('delete folder', { mailbox: this.mailbox })
+				await this.mainStore.deleteMailbox({ mailbox: this.mailbox })
+				logger.info(`mailbox ${id} deleted`)
+				if (parseInt(this.$route.params.mailboxId, 10) === this.mailbox.databaseId) {
+					await this.$router.replace({
+						name: 'mailbox',
+						params: {
+							mailboxId: PRIORITY_INBOX_ID,
+						},
+					})
+				}
+			} catch (error) {
+				logger.error(action === 'clear' ? 'could not clear folder' : 'could not delete folder', { error })
+			}
 		},
 
 		async renameMailbox() {
@@ -827,13 +872,16 @@ export default {
 			try {
 				await repairMailbox(mailboxId)
 
-				// Reload the page to start with a clean mailbox state
-				await this.$router.push({
-					name: 'mailbox',
-					params: {
-						mailboxId: this.$route.params.mailboxId,
-					},
-				})
+				// Reload the page to start with a clean mailbox state.
+				if (this.$route.name !== 'mailbox'
+					|| parseInt(this.$route.params.mailboxId, 10) !== mailboxId) {
+					await this.$router.push({
+						name: 'mailbox',
+						params: {
+							mailboxId,
+						},
+					})
+				}
 				window.location.reload()
 			} catch (error) {
 				// Only reset state in case of an error because the page will be reloaded anyway

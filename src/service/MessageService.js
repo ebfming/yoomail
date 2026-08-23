@@ -93,12 +93,16 @@ export async function syncEnvelopes(accountId, id, ids, lastMessageTimestamp, qu
 			throw new SyncIncompleteError()
 		}
 
+		// A locked mailbox is returned as a JSend success response so the caller
+		// can keep the current list while another sync finishes.
+		const data = response.data?.data ?? response.data ?? {}
 		const amend = amendEnvelopeWithIds(accountId)
 		return {
-			newMessages: response.data.newMessages.map(amend),
-			changedMessages: response.data.changedMessages.map(amend),
-			vanishedMessages: response.data.vanishedMessages,
-			stats: response.data.stats,
+			newMessages: Array.isArray(data.newMessages) ? data.newMessages.map(amend) : [],
+			changedMessages: Array.isArray(data.changedMessages) ? data.changedMessages.map(amend) : [],
+			vanishedMessages: Array.isArray(data.vanishedMessages) ? data.vanishedMessages : [],
+			stats: data.stats,
+			syncing: data.syncing === true,
 		}
 	} catch (e) {
 		if (e.response?.status === 428) {

@@ -71,6 +71,30 @@ class FolderMapper {
 		), $toPersist);
 	}
 
+	/**
+	 * Verify a mailbox using an exact LIST request.
+	 *
+	 * The all-mailboxes listing may temporarily retain a deleted subscribed
+	 * mailbox on some IMAP servers. An exact lookup is used before removing a
+	 * local mailbox record during an explicitly requested refresh.
+	 *
+	 * @throws Horde_Imap_Client_Exception
+	 */
+	public function exists(Horde_Imap_Client_Socket $client, string $mailbox): bool {
+		$listed = $client->listMailboxes($mailbox, Horde_Imap_Client::MBOX_ALL, [
+			'attributes' => true,
+		]);
+
+		foreach ($listed as $folder) {
+			$attributes = array_map('strtolower', $folder['attributes'] ?? []);
+			if (!in_array('\\nonexistent', $attributes, true)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public function createFolder(Horde_Imap_Client_Socket $client, string $name, array $specialUse = []): Folder {
 		$client->createMailbox($name, [
 			'special_use' => $specialUse,

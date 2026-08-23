@@ -116,6 +116,9 @@ class MailSearch implements IMailSearch {
 			return [];
 		}
 		if (!$mailbox->isCached()) {
+			if ($mailbox->getMessages() === 0) {
+				return [];
+			}
 			throw MailboxNotCachedException::from($mailbox);
 		}
 

@@ -183,6 +183,23 @@ const addMailboxToState = curry((mailboxes, account, mailbox) => {
 	})
 })
 
+function mailboxTreeDepth(account, mailbox) {
+	const delimiter = mailbox.delimiter
+	if (!delimiter) {
+		return 0
+	}
+
+	const nameWithoutPrefix = account.personalNamespace
+		? mailbox.name.replace(new RegExp(escapeRegExp(account.personalNamespace)), '')
+		: mailbox.name
+
+	return nameWithoutPrefix.split(delimiter).length - 1
+}
+
+function sortMailboxesForTree(mailboxes, account) {
+	return sortMailboxes(mailboxes, account).sort((a, b) => mailboxTreeDepth(account, a) - mailboxTreeDepth(account, b))
+}
+
 function transformMailboxName(account, mailbox) {
 	// Add all mailboxes (including submailboxes to state, but only toplevel to account
 	const nameWithoutPrefix = account.personalNamespace
@@ -247,8 +264,17 @@ export default function mainStoreActions() {
 		},
 		async syncMailboxesForAccount(account) {
 			logger.debug(`Fetching mailboxes for account ${account.id},  …`, { account })
-			account.mailboxes = await fetchAllMailboxes(account.id, true)
-			const mailboxes = sortMailboxes(account.mailboxes || [], account)
+			const synchronizedMailboxes = await fetchAllMailboxes(account.id, true)
+			const synchronizedMailboxIds = new Set(synchronizedMailboxes.map((mailbox) => mailbox.databaseId))
+
+			// A folder can be removed by another mail client. Remove its stale local
+			// entry before rebuilding the tree so routes cannot keep syncing it.
+			Object.values(this.mailboxes)
+				.filter((mailbox) => mailbox.accountId === account.id && !synchronizedMailboxIds.has(mailbox.databaseId))
+				.forEach((mailbox) => Vue.delete(this.mailboxes, mailbox.databaseId))
+
+			account.mailboxes = synchronizedMailboxes
+			const mailboxes = sortMailboxesForTree(synchronizedMailboxes, account)
 			Vue.set(account, 'mailboxes', [])
 			mailboxes.map(addMailboxToState(this.mailboxes, account))
 		},
@@ -348,7 +374,20 @@ export default function mainStoreActions() {
 				const prefixed = (account.personalNamespace && !name.startsWith(account.personalNamespace))
 					? account.personalNamespace + name
 					: name
-				const mailbox = await createMailbox(account.id, prefixed)
+				let mailbox
+				try {
+					mailbox = await createMailbox(account.id, prefixed)
+				} catch (error) {
+					await this.syncMailboxesForAccount(account)
+					const existing = this.findMailboxByName(account.id, prefixed)
+					if (!existing) {
+						throw error
+					}
+
+					logger.info(`mailbox ${prefixed} already exists for account ${account.id}; refreshed local mailbox list`, { mailbox: existing })
+					this.expandAccountMutation(account.id)
+					return existing
+				}
 				logger.debug(`mailbox ${prefixed} created for account ${account.id}`, { mailbox })
 				this.addMailboxMutation({
 					account,
@@ -711,6 +750,11 @@ export default function mainStoreActions() {
 			return handleHttpAuthErrors(async () => {
 				const mailbox = this.getMailbox(mailboxId)
 
+				if (mailbox?.selectable === false) {
+					logger.debug(`Skipping envelope fetch for non-selectable mailbox ${mailboxId}`, { mailbox })
+					return []
+				}
+
 				if (mailbox.isUnified) {
 					const fetchIndividualLists = pipe(
 						map((mb) => this.fetchEnvelopes({
@@ -884,11 +928,17 @@ export default function mainStoreActions() {
 			mailboxId,
 			query,
 			init = false,
+			lockedRetries = 4,
 		}) {
 			return handleHttpAuthErrors(async () => {
 				logger.debug(`starting mailbox sync of ${mailboxId} (${query})`)
 
 				const mailbox = this.getMailbox(mailboxId)
+
+				if (mailbox?.selectable === false) {
+					logger.debug(`Skipping mailbox sync for non-selectable mailbox ${mailboxId}`, { mailbox, init })
+					return []
+				}
 
 				// Skip superfluous requests if using passwordless authentication. They will fail anyway.
 				const passwordIsUnavailable = this.getPreference('password-is-unavailable', false)
@@ -923,9 +973,27 @@ export default function mainStoreActions() {
 				const ids = this.getEnvelopes(mailboxId, query).map((env) => env.databaseId)
 				const lastTimestamp = this.getPreference('sort-order') === 'newest' ? null : this.getEnvelopes(mailboxId, query)[0]?.dateInt
 				logger.debug(`mailbox sync of ${mailboxId} (${query}) has ${ids.length} known IDs. ${lastTimestamp} is the last known message timestamp`, { mailbox })
-				return syncEnvelopesExternal(mailbox.accountId, mailboxId, ids, lastTimestamp, query, init, this.getPreference('sort-order'))
-					.then((syncData) => {
-						logger.debug(`mailbox ${mailboxId} (${query}) synchronized, ${syncData.newMessages.length} new, ${syncData.changedMessages.length} changed and ${syncData.vanishedMessages.length} vanished messages`)
+					return syncEnvelopesExternal(mailbox.accountId, mailboxId, ids, lastTimestamp, query, init, this.getPreference('sort-order'))
+						.then((syncData) => {
+							if (syncData.syncing) {
+								if (lockedRetries > 0) {
+									logger.info(`Mailbox ${mailboxId} is already syncing; retrying after the active sync finishes`, {
+										mailboxId,
+										query,
+										lockedRetries,
+									})
+									return wait(1500).then(() => this.syncEnvelopes({
+										mailboxId,
+										query,
+										init,
+										lockedRetries: lockedRetries - 1,
+									}))
+								}
+
+								logger.warn(`Mailbox ${mailboxId} is still syncing after automatic retries`, { mailboxId, query })
+								return []
+							}
+							logger.debug(`mailbox ${mailboxId} (${query}) synchronized, ${syncData.newMessages.length} new, ${syncData.changedMessages.length} changed and ${syncData.vanishedMessages.length} vanished messages`)
 
 						const unifiedMailbox = this.getUnifiedMailbox(mailbox.specialRole)
 
@@ -953,10 +1021,12 @@ export default function mainStoreActions() {
 							// Already removed from unified inbox
 						})
 
-						this.setMailboxUnreadCountMutation({
-							id: mailboxId,
-							unread: syncData.stats.unread,
-						})
+							if (syncData.stats) {
+								this.setMailboxUnreadCountMutation({
+									id: mailboxId,
+									unread: syncData.stats.unread,
+								})
+							}
 
 						return syncData.newMessages
 					})
@@ -1922,7 +1992,7 @@ export default function mainStoreActions() {
 			this.accountList = this.sortAccounts(mappedAccounts).map((a) => a.id)
 
 			// Save the mailboxes to the store, but only keep IDs in the account's mailboxes list
-			const mailboxes = sortMailboxes(account.mailboxes || [], account)
+			const mailboxes = sortMailboxesForTree(account.mailboxes || [], account)
 			Vue.set(account, 'mailboxes', [])
 			Vue.set(account, 'aliases', account.aliases ?? [])
 
@@ -2484,7 +2554,8 @@ export default function mainStoreActions() {
 			return this.envelopes[id]
 		},
 		getEnvelopes(mailboxId, query) {
-			const list = this.getMailbox(mailboxId).envelopeLists[normalizedEnvelopeListId(query)] || []
+			const mailbox = this.getMailbox(mailboxId)
+			const list = mailbox?.envelopeLists?.[normalizedEnvelopeListId(query)] || []
 			return list.map((msgId) => this.envelopes[msgId])
 		},
 		getEnvelopesByThreadRootId(accountId, threadRootId) {

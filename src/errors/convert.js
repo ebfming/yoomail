@@ -33,16 +33,25 @@ export function convertAxiosError(axiosError) {
 		return axiosError
 	}
 
+	const response = axiosError.response
+	if (response.status === 428) {
+		return new MailboxNotCachedError(response.data?.data?.message || 'Mailbox is not cached yet')
+	}
+
+	if (response.data?.data?.type === 'OCA\\YooMail\\Exception\\MailboxNotCachedException') {
+		return new MailboxNotCachedError(response.data.data.message)
+	}
+
 	if (!('x-mail-response' in axiosError.response.headers)) {
 		// Not a structured response
 		return axiosError
 	}
 
-	const response = axiosError.response
-	if (!(response.data.data.type in map)) {
+	const responseType = response.data?.data?.type
+	if (!(responseType in map)) {
 		// No conversion possible
 		return axiosError
 	}
 
-	return new map[response.data.data.type](response.data.data.message)
+	return new map[responseType](response.data.data.message)
 }

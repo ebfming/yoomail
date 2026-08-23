@@ -27,9 +27,11 @@ use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 use function array_combine;
+use function array_filter;
 use function array_map;
 use function array_reduce;
 use function array_slice;
+use function array_values;
 use function in_array;
 use function json_encode;
 use function shuffle;
@@ -126,6 +128,9 @@ class MailboxSync {
 				);
 			}
 			$this->folderMapper->detectFolderSpecialUse($folders);
+			if ($force) {
+				$folders = $this->removeVanishedFolders($account, $folders, $client, $logger);
+			}
 
 			$mailboxes = $this->atomic(function () use ($account, $folders, $namespaces) {
 				$old = $this->mailboxMapper->findAll($account);
@@ -147,6 +152,47 @@ class MailboxSync {
 				$client->logout();
 			}
 		}
+	}
+
+	/**
+	 * Some IMAP servers leave a recently deleted subscribed folder in a broad
+	 * LIST response. A user-initiated forced refresh must not retain that stale
+	 * mailbox in YooMail's database.
+	 *
+	 * @param Folder[] $folders
+	 * @return Folder[]
+	 */
+	private function removeVanishedFolders(Account $account,
+		array $folders,
+		Horde_Imap_Client_Socket $client,
+		LoggerInterface $logger): array {
+		$staleNames = [];
+		foreach ($this->mailboxMapper->findAll($account) as $mailbox) {
+			try {
+				if (!$this->folderMapper->exists($client, $mailbox->getName())) {
+					$staleNames[] = $mailbox->getName();
+				}
+			} catch (Horde_Imap_Client_Exception $e) {
+				// Do not remove a local mailbox unless the IMAP server answered the
+				// exact verification request successfully.
+				$logger->debug('Unable to verify mailbox ' . $mailbox->getName(), [
+					'exception' => $e,
+				]);
+			}
+		}
+
+		if ($staleNames === []) {
+			return $folders;
+		}
+
+		$logger->info('Removing mailboxes no longer present on the IMAP server', [
+			'accountId' => $account->getId(),
+			'mailboxes' => $staleNames,
+		]);
+		return array_values(array_filter(
+			$folders,
+			static fn (Folder $folder): bool => !in_array($folder->getMailbox(), $staleNames, true),
+		));
 	}
 
 	/**

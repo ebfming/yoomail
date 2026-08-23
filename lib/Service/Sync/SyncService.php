@@ -112,6 +112,17 @@ class SyncService {
 		string $sortOrder = IMailSearch::ORDER_NEWEST_FIRST,
 		?string $filter = null): Response {
 		if ($partialOnly && !$mailbox->isCached()) {
+			if ($mailbox->getMessages() === 0) {
+				$query = $filter === null ? null : $this->filterStringParser->parse($filter);
+				return $this->getDatabaseSyncChanges(
+					$account,
+					$mailbox,
+					$knownIds ?? [],
+					$lastMessageTimestamp,
+					$sortOrder,
+					$query
+				);
+			}
 			throw MailboxNotCachedException::from($mailbox);
 		}
 

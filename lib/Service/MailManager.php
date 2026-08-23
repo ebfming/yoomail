@@ -739,7 +739,24 @@ class MailManager implements IMailManager {
 		Mailbox $mailbox): void {
 		$client = $this->imapClientFactory->getClient($account);
 		try {
-			$this->folderMapper->delete($client, $mailbox->getName());
+			try {
+				$this->folderMapper->delete($client, $mailbox->getName());
+			} catch (ServiceException $e) {
+				try {
+					$exists = $this->folderMapper->exists($client, $mailbox->getName());
+				} catch (Horde_Imap_Client_Exception) {
+					throw $e;
+				}
+
+				if ($exists) {
+					throw $e;
+				}
+
+				$this->logger->info('Mailbox was already removed on the IMAP server, deleting stale local record', [
+					'mailboxId' => $mailbox->getId(),
+					'mailbox' => $mailbox->getName(),
+				]);
+			}
 		} finally {
 			$client->logout();
 		}
@@ -760,6 +777,11 @@ class MailManager implements IMailManager {
 	#[\Override]
 	public function clearMailbox(Account $account,
 		Mailbox $mailbox): void {
+		if (!$mailbox->isCached() && $mailbox->getMessages() === 0) {
+			$this->dbMessageMapper->deleteAll($mailbox);
+			return;
+		}
+
 		$client = $this->imapClientFactory->getClient($account);
 		$trashMailboxId = $account->getMailAccount()->getTrashMailboxId();
 		$currentMailboxId = $mailbox->getId();

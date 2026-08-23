@@ -229,21 +229,40 @@ export default {
 	},
 
 	methods: {
+		isSelectableMailbox() {
+			return this.mailbox?.selectable !== false
+		},
+
 		async initializeCache() {
+			if (this.loadingCacheInitialization) {
+				logger.debug(`Cache initialization already in progress for folder ${this.mailbox.databaseId}, skipping`)
+				return
+			}
+			if (!this.isSelectableMailbox()) {
+				logger.debug(`Skipping cache initialization for non-selectable folder ${this.mailbox.databaseId}`)
+				return
+			}
 			this.loadingCacheInitialization = true
 			this.error = false
 
 			logger.debug(`syncing folder ${this.mailbox.databaseId} (${this.query}) during cache initalization`)
 			try {
 				await this.sync(true)
-				return await this.loadEnvelopes()
 			} finally {
 				this.loadingCacheInitialization = false
 			}
 		},
 
-		async loadEnvelopes() {
+		async loadEnvelopes(allowCacheInitialization = true) {
 			logger.debug(`Fetching envelopes for folder ${this.mailbox.databaseId} (${this.searchQuery})`, this.mailbox)
+			if (!this.isSelectableMailbox()) {
+				this.loadingEnvelopes = false
+				this.loadingCacheInitialization = false
+				this.error = false
+				this.syncedMailboxes.add(this.mailbox.databaseId + (this.searchQuery ?? ''))
+				logger.debug(`Skipping envelope load for non-selectable folder ${this.mailbox.databaseId}`)
+				return
+			}
 			if (!this.syncedMailboxes.has(this.mailbox.databaseId + (this.searchQuery ?? ''))) {
 				// Only trigger skeleton if we didn't sync envelopes yet
 				this.loadingEnvelopes = true
@@ -280,8 +299,15 @@ export default {
 						logger.info(`Mailbox ${this.mailbox.databaseId} (${this.searchQuery}) not cached. Triggering initialization`, { error })
 						this.loadingEnvelopes = false
 
+						if (!allowCacheInitialization || this.loadingCacheInitialization) {
+							logger.error(`Could not initialize cache of folder ${this.mailbox.databaseId} (${this.searchQuery}): mailbox is still not cached`, { error })
+							this.error = error
+							return
+						}
+
 						try {
 							await this.initializeCache()
+							await this.loadEnvelopes(false)
 						} catch (error) {
 							logger.error(`Could not initialize cache of folder ${this.mailbox.databaseId} (${this.searchQuery})`, { error })
 							this.error = error
@@ -516,6 +542,10 @@ export default {
 		},
 
 		async sync(init = false) {
+			if (!this.isSelectableMailbox()) {
+				logger.debug(`Skipping sync for non-selectable folder ${this.mailbox.databaseId}`, { init })
+				return
+			}
 			if (this.refreshing) {
 				logger.debug(`already sync'ing folder ${this.mailbox.databaseId} (${this.searchQuery}), aborting`, { init })
 				return
@@ -527,20 +557,20 @@ export default {
 					mailboxId: this.mailbox.databaseId,
 					query: this.searchQuery,
 					init,
-			})
-		} catch (error) {
-			const handled = await matchError(error, {
-				[MailboxLockedError.getName()](error) {
-					logger.info('Background sync failed because the folder is locked', {
-						error,
-						init,
-					})
-					return false
-				},
-				[MailboxNotCachedError.getName()]: async (error) => {
-					logger.info('Background sync found an uncached folder, initializing cache', {
-						error,
-						init,
+				})
+			} catch (error) {
+				const handled = await matchError(error, {
+					[MailboxLockedError.getName()](error) {
+						logger.info('Background sync failed because the folder is locked', {
+							error,
+							init,
+						})
+						return false
+					},
+					[MailboxNotCachedError.getName()]: async (error) => {
+						logger.info('Background sync found an uncached folder, initializing cache', {
+							error,
+							init,
 						})
 						if (!init) {
 							await this.initializeCache()
@@ -549,16 +579,16 @@ export default {
 						return false
 					},
 					default(error) {
-					logger.error('Could not sync envelopes: ' + error.message, {
-						error,
-						init,
-					})
-					return false
-				},
-			})
-			if (!handled) {
-				throw error
-			}
+						logger.error('Could not sync envelopes: ' + error.message, {
+							error,
+							init,
+						})
+						return false
+					},
+				})
+				if (!handled) {
+					throw error
+				}
 			} finally {
 				this.refreshing = false
 				logger.debug(`finished sync'ing folder ${this.mailbox.databaseId} (${this.searchQuery})`, { init })
