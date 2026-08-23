@@ -166,7 +166,7 @@ class MailboxesController extends Controller {
 	 * @throws ServiceException
 	 */
 	#[TrapError]
-	public function sync(int $id, array $ids = [], ?int $lastMessageTimestamp = null, bool $init = false, string $sortOrder = 'newest', ?string $query = null): JSONResponse {
+	public function sync(int $id, array $ids = [], ?int $lastMessageTimestamp = null, bool $init = false, string $sortOrder = 'newest', ?string $query = null, bool $repairVanished = false): JSONResponse {
 		if ($this->currentUserId === null) {
 			return new JSONResponse([], Http::STATUS_UNAUTHORIZED);
 		}
@@ -196,7 +196,8 @@ class MailboxesController extends Controller {
 				$lastMessageTimestamp,
 				array_map(static fn ($id) => (int)$id, $ids),
 				$order,
-				$query
+				$query,
+				$repairVanished
 			);
 		} catch (MailboxLockedException $e) {
 			return \OCA\YooMail\Http\JsonResponse::success([

@@ -92,7 +92,7 @@ export default {
 				if (currentMailbox.isUnified) {
 					const accounts = this.mainStore.getAccounts.filter((account) => !account.isUnified)
 					await Promise.all(accounts.map((account) => this.mainStore.syncMailboxesForAccount(account)))
-					await this.mainStore.syncInboxes()
+					await this.mainStore.syncInboxes({ repairVanished: true })
 					logger.debug('Unified mailbox is syncing')
 					return
 				}
@@ -113,7 +113,10 @@ export default {
 					})
 					return
 				}
-				await this.mainStore.syncEnvelopes({ mailboxId: synchronizedMailbox.databaseId })
+				await this.mainStore.syncEnvelopes({
+					mailboxId: synchronizedMailbox.databaseId,
+					repairVanished: true,
+				})
 				logger.debug('Current folder is sync\'ing ')
 			} catch (error) {
 				logger.error('could not sync current folder', { error })

@@ -75,7 +75,7 @@ export async function fetchThread(id) {
 	return resp.data
 }
 
-export async function syncEnvelopes(accountId, id, ids, lastMessageTimestamp, query, init = false, sortOrder) {
+export async function syncEnvelopes(accountId, id, ids, lastMessageTimestamp, query, init = false, sortOrder, repairVanished = false) {
 	const url = generateUrl('/apps/yoomail/api/mailboxes/{id}/sync', {
 		id,
 	})
@@ -87,6 +87,7 @@ export async function syncEnvelopes(accountId, id, ids, lastMessageTimestamp, qu
 			init,
 			sortOrder,
 			query,
+			repairVanished,
 		})
 
 		if (response.status === 202) {

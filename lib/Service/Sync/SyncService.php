@@ -110,7 +110,8 @@ class SyncService {
 		?int $lastMessageTimestamp,
 		?array $knownIds = null,
 		string $sortOrder = IMailSearch::ORDER_NEWEST_FIRST,
-		?string $filter = null): Response {
+		?string $filter = null,
+		bool $repairVanished = false): Response {
 		if ($partialOnly && !$mailbox->isCached()) {
 			if ($mailbox->getMessages() === 0) {
 				$query = $filter === null ? null : $this->filterStringParser->parse($filter);
@@ -159,6 +160,10 @@ class SyncService {
 		$this->mailboxSync->syncStats($client, $mailbox);
 
 		$client->logout();
+
+		if ($repairVanished) {
+			$this->repairSync($account, $mailbox);
+		}
 
 		$query = $filter === null ? null : $this->filterStringParser->parse($filter);
 		return $this->getDatabaseSyncChanges(

@@ -929,6 +929,7 @@ export default function mainStoreActions() {
 			query,
 			init = false,
 			lockedRetries = 4,
+			repairVanished = false,
 		}) {
 			return handleHttpAuthErrors(async () => {
 				logger.debug(`starting mailbox sync of ${mailboxId} (${query})`)
@@ -954,6 +955,7 @@ export default function mainStoreActions() {
 								mailboxId: mailbox.databaseId,
 								query,
 								init,
+								repairVanished,
 							})))))
 				} else if (mailbox.isPriorityInbox && query === undefined) {
 					return Promise.all(getPrioritySearchQueries().map((query) => {
@@ -966,6 +968,7 @@ export default function mainStoreActions() {
 									mailboxId: mailbox.databaseId,
 									query,
 									init,
+									repairVanished,
 								})))))
 					}))
 				}
@@ -973,7 +976,7 @@ export default function mainStoreActions() {
 				const ids = this.getEnvelopes(mailboxId, query).map((env) => env.databaseId)
 				const lastTimestamp = this.getPreference('sort-order') === 'newest' ? null : this.getEnvelopes(mailboxId, query)[0]?.dateInt
 				logger.debug(`mailbox sync of ${mailboxId} (${query}) has ${ids.length} known IDs. ${lastTimestamp} is the last known message timestamp`, { mailbox })
-					return syncEnvelopesExternal(mailbox.accountId, mailboxId, ids, lastTimestamp, query, init, this.getPreference('sort-order'))
+					return syncEnvelopesExternal(mailbox.accountId, mailboxId, ids, lastTimestamp, query, init, this.getPreference('sort-order'), repairVanished)
 						.then((syncData) => {
 							if (syncData.syncing) {
 								if (lockedRetries > 0) {
@@ -987,6 +990,7 @@ export default function mainStoreActions() {
 										query,
 										init,
 										lockedRetries: lockedRetries - 1,
+										repairVanished,
 									}))
 								}
 
@@ -1038,6 +1042,7 @@ export default function mainStoreActions() {
 									mailboxId,
 									query,
 									init,
+									repairVanished,
 								})
 							},
 							[MailboxLockedError.getName()]: (error) => {
@@ -1051,6 +1056,7 @@ export default function mainStoreActions() {
 									mailboxId,
 									query,
 									init,
+									repairVanished,
 								}))
 							},
 							[MailboxNotCachedError.getName()]: (error) => {
@@ -1065,7 +1071,9 @@ export default function mainStoreActions() {
 					})
 			})
 		},
-		async syncInboxes() {
+		async syncInboxes({
+			repairVanished = false,
+		} = {}) {
 			// Skip superfluous requests if using passwordless authentication. They will fail anyway.
 			const passwordIsUnavailable = this.getPreference('password-is-unavailable', false)
 			const isDisabled = (account) => passwordIsUnavailable && !!account.provisioningId
@@ -1088,6 +1096,7 @@ export default function mainStoreActions() {
 
 							return await this.syncEnvelopes({
 								mailboxId: mailbox.databaseId,
+								repairVanished,
 							})
 						}))
 					}))
@@ -1113,6 +1122,7 @@ export default function mainStoreActions() {
 						await this.syncEnvelopes({
 							mailboxId: UNIFIED_INBOX_ID,
 							query,
+							repairVanished,
 						})
 					}
 				} finally {
