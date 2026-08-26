@@ -10,6 +10,14 @@ use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 use Workerman\Connection\TcpConnection;
 use Workerman\Worker;
+use function chmod;
+use function is_file;
+use function is_dir;
+use function mkdir;
+use function rtrim;
+use function sprintf;
+use function touch;
+use const DIRECTORY_SEPARATOR;
 
 /**
  * Orchestrates the realtime service using multiple Workerman worker
@@ -76,13 +84,13 @@ class RealtimeServer
         $ipcPort = (int)$this->config->getAppValue('yoomail', 'realtime_ipc_port', '8790');
         $channelPort = (int)$this->config->getAppValue('yoomail', 'realtime_channel_port', '2207');
 
-        // Workerman writes its pid file next to the start script (realtime/) by
-        // default, which may not be writable by the www-data user. Write it into
-        // the Nextcloud data directory (writable by www-data) instead, using a
-        // dedicated filename to avoid clashing with the pid file of the upstream
-        // mail realtime service.
-        Worker::$pidFile = \OC::$server->get(\OCP\IConfig::class)->getSystemValue('datadirectory', '/web/nextcloud/data')
-            . '/yoomail-realtime.pid';
+        // Keep Workerman runtime files out of the app source tree so service
+        // users can write logs/pid/status files without mutating deployed code.
+        $runtimeDir = $this->prepareRuntimeDirectory();
+        Worker::$pidFile = $runtimeDir . '/workerman.pid';
+        Worker::$statusFile = $runtimeDir . '/workerman.status';
+        Worker::$stdoutFile = $runtimeDir . '/workerman.stdout.log';
+        Worker::$logFile = $runtimeDir . '/workerman.log';
 
         echo "[yoomail-realtime] ws://{$wsHost}:{$wsPort}  ipc tcp://{$wsHost}:{$ipcPort}  channel tcp://" . self::CHANNEL_HOST . ':' . $channelPort . "\n";
 
@@ -149,6 +157,26 @@ class RealtimeServer
         }
 
         Worker::runAll();
+    }
+
+    private function prepareRuntimeDirectory(): string
+    {
+        $dataDir = (string)$this->config->getSystemValue('datadirectory', '/web/nextcloud/data');
+        $runtimeDir = rtrim($dataDir, DIRECTORY_SEPARATOR) . '/yoomail-realtime';
+
+        if (!is_dir($runtimeDir)) {
+            mkdir($runtimeDir, 0770, true);
+        }
+
+        foreach (['workerman.log', 'workerman.stdout.log'] as $fileName) {
+            $path = $runtimeDir . '/' . $fileName;
+            if (!is_file($path)) {
+                touch($path);
+                chmod($path, 0660);
+            }
+        }
+
+        return $runtimeDir;
     }
 
     /**

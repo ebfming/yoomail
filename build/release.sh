@@ -53,7 +53,6 @@ rsync -a \
 	--exclude 'package-lock.json' \
 	--exclude 'patches.json' \
 	--exclude 'deploy.sh' \
-	--exclude 'realtime/workerman.log' \
 	--exclude '*.js.map' \
 	./ "build/appstore/$APP_NAME/"
 
