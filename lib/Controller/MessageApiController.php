@@ -372,7 +372,7 @@ class MessageApiController extends OCSController {
 	 * @return array
 	 */
 	private function enrichDownloadUrl(int $id, array $attachment): array {
-		$downloadUrl = $this->urlGenerator->linkToOCSRouteAbsolute('mail.messageApi.getAttachment',
+		$downloadUrl = $this->urlGenerator->linkToOCSRouteAbsolute('yoomail.messageApi.getAttachment',
 			[
 				'id' => $id,
 				'attachmentId' => $attachment['id'],

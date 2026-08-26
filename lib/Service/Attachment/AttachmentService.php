@@ -315,7 +315,7 @@ class AttachmentService implements IAttachmentService {
 		}
 
 		$result = array_values(array_map(function ($attachment) use ($message) {
-			$downloadUrl = $this->urlGenerator->linkToRouteAbsolute('mail.messages.downloadAttachment', [
+			$downloadUrl = $this->urlGenerator->linkToRouteAbsolute('yoomail.messages.downloadAttachment', [
 				'id' => $message->getId(),
 				'attachmentId' => $attachment['id'],
 			]);

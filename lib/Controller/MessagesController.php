@@ -1222,7 +1222,7 @@ class MessagesController extends Controller {
 	 * @return array
 	 */
 	private function enrichAttachment(int $id, array $attachment): array {
-		$downloadUrl = $this->urlGenerator->linkToRouteAbsolute('mail.messages.downloadAttachment', [
+		$downloadUrl = $this->urlGenerator->linkToRouteAbsolute('yoomail.messages.downloadAttachment', [
 			'id' => $id,
 			'attachmentId' => $attachment['id'],
 		]);
