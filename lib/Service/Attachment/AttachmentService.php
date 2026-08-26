@@ -295,7 +295,11 @@ class AttachmentService implements IAttachmentService {
 		$cached = $cache->get($cacheKey);
 		if (is_array($cached)) {
 			/** @var list<array{id: string, fileName: string|null, mime: string, downloadUrl: string, mimeUrl: string}> $cached */
-			return $cached;
+			$normalized = $this->rewriteLegacyAttachmentUrls($cached);
+			if ($normalized !== $cached) {
+				$cache->set($cacheKey, $normalized, 604800);
+			}
+			return $normalized;
 		}
 
 		$attachments = [];
@@ -325,6 +329,24 @@ class AttachmentService implements IAttachmentService {
 
 		$cache->set($cacheKey, $result, 604800);
 		return $result;
+	}
+
+	/**
+	 * Older YooMail builds inherited attachment URLs from the upstream Mail app.
+	 * Normalize cached attachment metadata so production instances do not keep
+	 * serving `/apps/mail/...` links until the distributed cache expires.
+	 *
+	 * @param list<array{id: string, fileName: string|null, mime: string, downloadUrl: string, mimeUrl: string}> $attachments
+	 * @return list<array{id: string, fileName: string|null, mime: string, downloadUrl: string, mimeUrl: string}>
+	 */
+	private function rewriteLegacyAttachmentUrls(array $attachments): array {
+		return array_map(static function (array $attachment): array {
+			if (isset($attachment['downloadUrl']) && is_string($attachment['downloadUrl'])) {
+				$attachment['downloadUrl'] = str_replace('/apps/mail/api/messages/', '/apps/yoomail/api/messages/', $attachment['downloadUrl']);
+			}
+
+			return $attachment;
+		}, $attachments);
 	}
 
 	/**

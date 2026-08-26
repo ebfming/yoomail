@@ -44,7 +44,7 @@ All releases in this repository currently build on top of upstream
 - Fixed inline attachment URLs in HTML message bodies still pointing to the
   upstream Mail app route (`/apps/mail/api/messages/...`). YooMail now
   generates `yoomail.messages.downloadAttachment` links and automatically
-  rewrites legacy cached body payloads on read.
+  rewrites legacy cached body payloads and cached attachment metadata on read.
 
 ### Changed
 
