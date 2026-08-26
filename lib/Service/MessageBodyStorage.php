@@ -121,7 +121,39 @@ class MessageBodyStorage {
 			return null;
 		}
 
-		return $data['payload'];
+		$payload = $this->rewriteLegacyMailRoutes($data['payload']);
+		if ($payload !== $data['payload']) {
+			$data['payload'] = $payload;
+			$content = json_encode(
+				$data,
+				JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE
+			);
+			if ($content !== false) {
+				@file_put_contents($path, $content);
+			}
+		}
+
+		return $payload;
+	}
+
+	/**
+	 * Older YooMail builds inherited inline attachment links from the upstream
+	 * Mail app route. Normalize cached bodies so users do not need to clear the
+	 * persistent body cache after upgrading.
+	 *
+	 * @param array<string|int, mixed> $payload
+	 * @return array<string|int, mixed>
+	 */
+	private function rewriteLegacyMailRoutes(array $payload): array {
+		foreach ($payload as $key => $value) {
+			if (is_string($value)) {
+				$payload[$key] = str_replace('/apps/mail/api/messages/', '/apps/yoomail/api/messages/', $value);
+			} elseif (is_array($value)) {
+				$payload[$key] = $this->rewriteLegacyMailRoutes($value);
+			}
+		}
+
+		return $payload;
 	}
 
 	/**

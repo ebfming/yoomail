@@ -41,6 +41,10 @@ All releases in this repository currently build on top of upstream
   unqualified `new DateTime(...)` which resolved to a non-existent class in
   the `OCA\YooMail\IMAP` namespace; the global `DateTime` class is now
   imported explicitly.
+- Fixed inline attachment URLs in HTML message bodies still pointing to the
+  upstream Mail app route (`/apps/mail/api/messages/...`). YooMail now
+  generates `yoomail.messages.downloadAttachment` links and automatically
+  rewrites legacy cached body payloads on read.
 
 ### Changed
 

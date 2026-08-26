@@ -124,7 +124,7 @@ class Html {
 	private function addAttachmentUrl(int $messageId, array $inlineAttachments): array {
 		return array_map(function (array $inlineAttachment) use ($messageId) {
 			$inlineAttachment['url'] = $this->urlGenerator->linkToRouteAbsolute(
-				'mail.messages.downloadAttachment', [
+				'yoomail.messages.downloadAttachment', [
 					'id' => $messageId,
 					'attachmentId' => $inlineAttachment['id']
 				]
