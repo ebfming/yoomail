@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\YooMail\Controller;
 
 use OCA\YooMail\Db\LocalMessage;
+use OCA\YooMail\Db\Recipient;
 use OCA\YooMail\Exception\ClientException;
 use OCA\YooMail\Http\JsonResponse;
 use OCA\YooMail\Http\TrapError;
@@ -113,6 +114,8 @@ class OutboxController extends Controller {
 		bool $requestMdn = false,
 		bool $isPgpMime = false,
 	): JsonResponse {
+		self::validateRecipients($to, $cc, $bcc);
+
 		$effectiveUserId = $this->delegationService->resolveAccountUserId($accountId, $this->userId);
 		$account = $this->accountService->find($effectiveUserId, $accountId);
 
@@ -208,6 +211,8 @@ class OutboxController extends Controller {
 		bool $requestMdn = false,
 		bool $isPgpMime = false,
 	): JsonResponse {
+		self::validateRecipients($to, $cc, $bcc);
+
 		$effectiveUserId = $this->delegationService->resolveLocalMessageUserId($id, $this->userId);
 		$message = $this->service->getMessage($id, $effectiveUserId);
 		if ($message->getStatus() === LocalMessage::STATUS_PROCESSED) {
@@ -254,6 +259,7 @@ class OutboxController extends Controller {
 	public function send(int $id): JsonResponse {
 		$effectiveUserId = $this->delegationService->resolveLocalMessageUserId($id, $this->userId);
 		$message = $this->service->getMessage($id, $effectiveUserId);
+		self::validateStoredRecipients($message);
 		$account = $this->accountService->find($effectiveUserId, $message->getAccountId());
 
 		$message = $this->service->sendMessage($message, $account);
@@ -284,5 +290,51 @@ class OutboxController extends Controller {
 		$this->service->deleteMessage($effectiveUserId, $message);
 		$this->delegationService->logDelegatedAction($this->userId, $effectiveUserId, "$this->userId deleted outbox message <$id> on behalf of $effectiveUserId");
 		return JsonResponse::success('Message deleted', Http::STATUS_ACCEPTED);
+	}
+
+	/**
+	 * @param array<int, array{email?: string, label?: string}> $to
+	 * @param array<int, array{email?: string, label?: string}> $cc
+	 * @param array<int, array{email?: string, label?: string}> $bcc
+	 *
+	 * @throws ClientException
+	 */
+	private static function validateRecipients(array $to, array $cc, array $bcc): void {
+		foreach (array_merge($to, $cc, $bcc) as $recipient) {
+			if (!is_array($recipient)) {
+				throw new ClientException('Recipient address must be an array.');
+			}
+
+			$email = trim((string)($recipient['email'] ?? ''));
+			if ($email === '') {
+				throw new ClientException('Recipient address must contain an email address.');
+			}
+
+			if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+				throw new ClientException("Email address $email not valid.");
+			}
+		}
+	}
+
+	/**
+	 * @throws ClientException
+	 */
+	private static function validateStoredRecipients(LocalMessage $message): void {
+		$recipients = $message->getRecipients() ?? [];
+		$toCcBcc = array_filter(
+			$recipients,
+			static fn (Recipient $recipient): bool => in_array(
+				$recipient->getType(),
+				[Recipient::TYPE_TO, Recipient::TYPE_CC, Recipient::TYPE_BCC],
+				true,
+			),
+		);
+
+		foreach ($toCcBcc as $recipient) {
+			$email = trim((string)$recipient->getEmail());
+			if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+				throw new ClientException("Email address $email not valid.");
+			}
+		}
 	}
 }

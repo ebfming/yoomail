@@ -298,15 +298,6 @@ export default {
 				})
 				try {
 					return uploadLocalAttachment(file, this.accountId, progress(file.name), controller)
-						.catch(() => {
-							this.attachments.some((attachment) => {
-								if (attachment.displayName === file.name && !attachment.error) {
-									this.$set(attachment, 'error', true)
-									return true
-								}
-								return false
-							})
-						})
 						.then(({ file, id }) => {
 							logger.info('local attachment uploaded', { file, id })
 
@@ -320,13 +311,27 @@ export default {
 								type: 'local',
 							}])
 						})
+						.catch((error) => {
+							this.attachments.some((attachment) => {
+								if (attachment.displayName === file.name && !attachment.error) {
+									this.$set(attachment, 'error', true)
+									return true
+								}
+								return false
+							})
+							throw error
+						})
 				} catch (error) {
 					logger.error('Could not upload file', { file, error })
+					throw error
 				}
 			}, e.target.files)
 
 			const done = Promise.all(promises)
-				.catch((error) => logger.error('could not upload all attachments', { error }))
+				.catch((error) => {
+					logger.error('could not upload all attachments', { error })
+					throw error
+				})
 				.then(() => (this.uploading = false))
 
 			this.$emit('upload', done)
