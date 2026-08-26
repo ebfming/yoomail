@@ -91,7 +91,7 @@ import IconSave from 'vue-material-design-icons/FolderOutline.vue'
 import IconAdd from 'vue-material-design-icons/Plus.vue'
 import IconDownload from 'vue-material-design-icons/TrayArrowDown.vue'
 import Logger from '../logger.js'
-import { downloadAttachment, saveAttachmentToFiles } from '../service/AttachmentService.js'
+import { downloadAttachment, normalizeAttachmentUrl, saveAttachmentToFiles } from '../service/AttachmentService.js'
 import { getUserCalendars, importCalendarEvent } from '../service/DAVService.js'
 
 export default {
@@ -243,7 +243,7 @@ export default {
 		},
 
 		download() {
-			window.location = this.url
+			window.location = normalizeAttachmentUrl(this.url)
 		},
 
 		loadCalendars() {

@@ -6,6 +6,14 @@
 import Axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
 
+export function normalizeAttachmentUrl(url) {
+	if (typeof url !== 'string') {
+		return url
+	}
+
+	return url.replace('/apps/mail/api/messages/', '/apps/yoomail/api/messages/')
+}
+
 export async function saveAttachmentToFiles(id, attachmentId, directory) {
 	const url = generateUrl(
 		'/apps/yoomail/api/messages/{id}/attachment/{attachmentId}',
@@ -26,7 +34,7 @@ export async function saveAttachmentsToFiles(id, directory) {
 }
 
 export function downloadAttachment(url) {
-	return Axios.get(url).then((res) => res.data)
+	return Axios.get(normalizeAttachmentUrl(url)).then((res) => res.data)
 }
 
 export function uploadLocalAttachment(file, accountId, progress, controller) {

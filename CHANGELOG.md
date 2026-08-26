@@ -45,6 +45,9 @@ All releases in this repository currently build on top of upstream
   upstream Mail app route (`/apps/mail/api/messages/...`). YooMail now
   generates `yoomail.messages.downloadAttachment` links and automatically
   rewrites legacy cached body payloads and cached attachment metadata on read.
+- Fixed attachment card downloads that could still use legacy Mail URLs from
+  already-loaded browser state. The frontend now normalizes attachment URLs
+  before direct downloads and calendar attachment imports.
 
 ### Changed
 
