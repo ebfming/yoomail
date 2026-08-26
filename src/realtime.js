@@ -29,36 +29,68 @@ class RealtimeClient {
 		this.stopped = false
 		this.token = null
 		this.wsUrl = null
+		this.pendingMailboxChanges = []
+		this.pendingFlushTimer = null
 	}
 
 	async start() {
 		this.stopped = false
+		await this.ensureConnected(true)
+	}
+
+	async fetchCredentials() {
 		try {
 			const { data } = await axios.post(generateUrl('/apps/yoomail/api/realtime/token'))
 			this.token = data.token
 			this.wsUrl = data.wsUrl
-			this.connect()
+			return true
 		} catch (error) {
-			logger.debug('mail-realtime: could not obtain realtime token', { error })
+			logger.debug('yoomail-realtime: could not obtain realtime token', { error })
+			return false
 		}
+	}
+
+	async ensureConnected(forceRefresh = false) {
+		if (this.stopped) {
+			return
+		}
+
+		if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+			return
+		}
+
+		if (forceRefresh || !this.token || !this.wsUrl) {
+			const ok = await this.fetchCredentials()
+			if (!ok) {
+				this.scheduleReconnect()
+				return
+			}
+		}
+
+		this.connect()
 	}
 
 	connect() {
 		if (this.stopped || !this.wsUrl || !this.token) {
 			return
 		}
+		if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+			return
+		}
+
 		try {
 			this.ws = new WebSocket(this.wsUrl)
 		} catch (error) {
-			logger.error('mail-realtime: WebSocket creation failed', { error })
+			logger.error('yoomail-realtime: WebSocket creation failed', { error })
 			this.scheduleReconnect()
 			return
 		}
 
 		this.ws.onopen = () => {
-			logger.debug('mail-realtime: connected, authenticating')
+			logger.debug('yoomail-realtime: connected, authenticating')
 			this.reconnectAttempts = 0
 			this.ws.send(JSON.stringify({ type: 'auth', token: this.token }))
+			this.flushPendingMailboxChanges()
 		}
 
 		this.ws.onmessage = (event) => {
@@ -66,13 +98,13 @@ class RealtimeClient {
 		}
 
 		this.ws.onclose = () => {
-			logger.debug('mail-realtime: connection closed')
+			logger.debug('yoomail-realtime: connection closed')
 			this.ws = null
 			this.scheduleReconnect()
 		}
 
 		this.ws.onerror = () => {
-			logger.debug('mail-realtime: connection error')
+			logger.debug('yoomail-realtime: connection error')
 		}
 	}
 
@@ -85,12 +117,12 @@ class RealtimeClient {
 		}
 
 		if (msg.type === 'connected') {
-			logger.debug('mail-realtime: authenticated')
+			logger.debug('yoomail-realtime: authenticated')
 			return
 		}
 
 		if (msg.type === 'sync-done') {
-			logger.debug('mail-realtime: sync done', msg)
+			logger.debug('yoomail-realtime: sync done', msg)
 			if (!window.OCA?.YooMailRealtime?.applySyncDone?.(msg)) {
 				this.onMailboxChanged(msg)
 			}
@@ -99,10 +131,10 @@ class RealtimeClient {
 
 		if (msg.type === 'mailbox-changed') {
 			if (msg.sync === 'started') {
-				logger.debug('mail-realtime: mailbox changed, waiting for sync-done', msg)
+				logger.debug('yoomail-realtime: mailbox changed, waiting for sync-done', msg)
 				return
 			}
-			logger.debug('mail-realtime: mailbox changed', msg)
+			logger.debug('yoomail-realtime: mailbox changed', msg)
 			this.onMailboxChanged(msg)
 		}
 	}
@@ -112,7 +144,7 @@ class RealtimeClient {
 		// future). Refresh the current mailbox list(s) for this account.
 		const store = window.OCA?.YooMailRealtime?.getMainStore?.()
 		if (!store) {
-			logger.warn('mail-realtime: main store not available')
+			this.queueMailboxChange({ mailboxId, accountId })
 			return
 		}
 		try {
@@ -121,7 +153,7 @@ class RealtimeClient {
 				accountId,
 			})
 		} catch (error) {
-			logger.error('mail-realtime: failed to refresh mailbox', { error })
+			logger.error('yoomail-realtime: failed to refresh mailbox', { error })
 		}
 	}
 
@@ -137,11 +169,48 @@ class RealtimeClient {
 			MAX_RECONNECT_DELAY_MS,
 		)
 		this.reconnectAttempts++
-		logger.debug(`mail-realtime: reconnecting in ${delay}ms`)
+		logger.debug(`yoomail-realtime: reconnecting in ${delay}ms`)
 		this.reconnectTimer = setTimeout(() => {
 			this.reconnectTimer = null
-			this.connect()
+			void this.ensureConnected(true)
 		}, delay)
+	}
+
+	queueMailboxChange(change) {
+		const exists = this.pendingMailboxChanges.some((item) => item.accountId === change.accountId && item.mailboxId === change.mailboxId)
+		if (!exists) {
+			this.pendingMailboxChanges.push(change)
+		}
+
+		if (this.pendingFlushTimer) {
+			return
+		}
+
+		this.pendingFlushTimer = setTimeout(() => {
+			this.pendingFlushTimer = null
+			this.flushPendingMailboxChanges()
+		}, 1000)
+	}
+
+	flushPendingMailboxChanges() {
+		const store = window.OCA?.YooMailRealtime?.getMainStore?.()
+		if (!store || this.pendingMailboxChanges.length === 0) {
+			return
+		}
+
+		const pending = [...this.pendingMailboxChanges]
+		this.pendingMailboxChanges = []
+		for (const change of pending) {
+			this.onMailboxChanged(change)
+		}
+	}
+
+	resume() {
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer)
+			this.reconnectTimer = null
+		}
+		void this.ensureConnected(true)
 	}
 
 	stop() {
@@ -153,6 +222,10 @@ class RealtimeClient {
 		if (this.ws) {
 			this.ws.close()
 			this.ws = null
+		}
+		if (this.pendingFlushTimer) {
+			clearTimeout(this.pendingFlushTimer)
+			this.pendingFlushTimer = null
 		}
 	}
 }
@@ -168,7 +241,7 @@ window.addEventListener('DOMContentLoaded', () => {
 // Reconnect when the tab becomes visible again after being hidden
 document.addEventListener('visibilitychange', () => {
 	if (!document.hidden && client) {
-		client.connect()
+		client.resume()
 	}
 })
 

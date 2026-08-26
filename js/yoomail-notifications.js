@@ -4,10 +4,18 @@
 	function init() {
 		const appId = 'yoomail'
 		const stateLoader = window.OCP?.InitialState
-		let settings = stateLoader?.loadState?.(appId, 'notification-settings', null) || null
+		const defaultSettings = {
+			nativeNewMail: false,
+			soundEnabled: true,
+			toastEnabled: true,
+			soundNewMail: true,
+			soundSendSuccess: true,
+			soundSendFail: true,
+		}
+		let settings = Object.assign({}, defaultSettings, stateLoader?.loadState?.(appId, 'notification-settings', {}) || {})
 		const audioUrls = stateLoader?.loadState?.(appId, 'notification-audio-urls', {}) || {}
 
-		if (!settings || !document.body) {
+		if (!document.body) {
 			return
 		}
 
@@ -21,7 +29,7 @@
 
 		function applySettings(nextSettings) {
 			if (nextSettings && typeof nextSettings === 'object') {
-				settings = Object.assign({}, settings, nextSettings)
+				settings = Object.assign({}, defaultSettings, settings, nextSettings)
 			}
 		}
 

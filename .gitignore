@@ -9,3 +9,4 @@ node_modules/
 
 build/appstore
 build/artifacts
+realtime/workerman.log

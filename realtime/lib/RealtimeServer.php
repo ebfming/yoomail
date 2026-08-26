@@ -6,6 +6,7 @@ namespace OCA\YooMailRealtime;
 
 use Channel\Client as ChannelClient;
 use Channel\Server as ChannelServer;
+use OCA\YooMail\Service\RealtimeAuthService;
 use OCP\IConfig;
 use Psr\Log\LoggerInterface;
 use Workerman\Connection\TcpConnection;
@@ -47,7 +48,7 @@ class RealtimeServer
     public function __construct(
         private IConfig $config,
         private UserConnectionRegistry $registry,
-        private RealtimeTokenService $tokenService,
+        private RealtimeAuthService $tokenService,
         private RealtimeSyncService $syncService,
         private ImapIdleManager $idleManager,
         private LoggerInterface $logger,
@@ -92,12 +93,12 @@ class RealtimeServer
         Worker::$stdoutFile = $runtimeDir . '/workerman.stdout.log';
         Worker::$logFile = $runtimeDir . '/workerman.log';
 
-        echo "[yoomail-realtime] ws://{$wsHost}:{$wsPort}  ipc tcp://{$wsHost}:{$ipcPort}  channel tcp://" . self::CHANNEL_HOST . ':' . $channelPort . "\n";
+        $this->logger->info("yoomail-realtime: websocket://{$wsHost}:{$wsPort} ipc://127.0.0.1:{$ipcPort} channel://127.0.0.1:{$channelPort}");
 
         // --- Channel server (internal pub/sub) ---
         $channelServer = new ChannelServer(self::CHANNEL_HOST, $channelPort);
 
-        $webSocketHandler = new WebSocketServer($this->registry, $this->tokenService);
+        $webSocketHandler = new WebSocketServer($this->registry, $this->tokenService, $this->logger);
 
         // --- WebSocket worker for browsers ---
         $wsWorker = new Worker("websocket://{$wsHost}:{$wsPort}");
@@ -110,7 +111,7 @@ class RealtimeServer
                     $this->handleChannelEvent($eventData);
                 });
             }
-            echo "[yoomail-realtime] WS worker subscribed to channel\n";
+            $this->logger->info('yoomail-realtime: WS worker subscribed to channel');
         };
         $wsWorker->onMessage = function ($connection, $data) use ($webSocketHandler): void {
             $webSocketHandler->handleMessage($connection, $data);
@@ -120,7 +121,7 @@ class RealtimeServer
         };
 
         // --- IPC worker: receives change signals from IDLE workers ---
-        $ipcWorker = new Worker("tcp://{$wsHost}:{$ipcPort}");
+        $ipcWorker = new Worker('tcp://' . self::CHANNEL_HOST . ':' . $ipcPort);
         $ipcWorker->count = 1;
         $ipcWorker->name = 'mail-ipc';
         $ipcWorker->onWorkerStart = function () use ($channelPort): void {
@@ -151,7 +152,7 @@ class RealtimeServer
                 $account = $listener['account'];
                 $mailboxId = $listener['mailboxId'];
                 $mailboxName = $listener['mailboxName'];
-                echo "[yoomail-realtime] IDLE worker id={$index} for account {$account->getId()} mailbox {$mailboxId} ({$mailboxName})\n";
+                $this->logger->info("yoomail-realtime: IDLE worker id={$index} for account {$account->getId()} mailbox {$mailboxId} ({$mailboxName})");
                 $this->startIdleWorker($account, $mailboxId, $mailboxName, $ipcPort);
             };
         }
@@ -190,6 +191,7 @@ class RealtimeServer
             $mailboxName,
             self::CHANNEL_HOST,
             $ipcPort,
+            $this->tokenService,
             $this->logger,
             (int)$this->config->getAppValue('yoomail', 'realtime_idle_refresh_seconds', '1500'),
         );
@@ -312,15 +314,22 @@ class RealtimeServer
      */
     private function handleIpcMessage(TcpConnection $connection, string $data): void
     {
-        echo "[yoomail-realtime] IPC onMessage fired: " . trim($data) . "\n";
         $payload = json_decode(trim($data), true);
         if (!is_array($payload)) {
+            $this->logger->warning('yoomail-realtime: IPC payload is not valid JSON');
             return;
         }
+
+        $payload = $this->tokenService->consumeIpcPayload($payload);
+        if ($payload === null) {
+            $this->logger->warning('yoomail-realtime: rejected unsigned or expired IPC payload');
+            return;
+        }
+
         $type = $payload['type'] ?? '';
         if ($type === 'mailbox-changed' || $type === 'sync-done') {
             ChannelClient::publish($type, $payload);
-            echo "[yoomail-realtime] IPC forwarded $type to channel\n";
+            $this->logger->debug("yoomail-realtime: IPC forwarded {$type} to channel");
         }
     }
 

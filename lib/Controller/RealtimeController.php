@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\YooMail\Controller;
 
 use OCA\YooMail\AppInfo\Application;
+use OCA\YooMail\Service\RealtimeAuthService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IConfig;
@@ -58,21 +59,14 @@ class RealtimeController extends Controller {
 			return new JSONResponse(['error' => 'realtime disabled'], 503);
 		}
 
-		$ttl = 60;
-		$expiry = time() + $ttl;
-		$secret = $this->config->getSystemValueString('secret');
-		$data = $this->userId . '.' . $expiry;
-		$sig = hash_hmac('sha256', $data, $secret);
-		$token = rtrim(base64_encode($this->userId), '=') . '.'
-			. rtrim(base64_encode((string)$expiry), '=') . '.'
-			. rtrim(base64_encode($sig), '=');
+		$token = (new RealtimeAuthService($this->config))->issueToken($this->userId);
 
 		// Derive the WebSocket URL from the current request's scheme/host,
 		// or fall back to the configured public URL.
 		$publicUrl = $this->config->getAppValue('yoomail', 'realtime_ws_public_url', '');
 		if ($publicUrl === '') {
-			$scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'wss' : 'ws';
-			$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+			$scheme = $this->request->getServerProtocol() === 'https' ? 'wss' : 'ws';
+			$host = $this->request->getServerHost();
 			$wsUrl = "{$scheme}://{$host}/yoomail-ws";
 		} else {
 			$wsUrl = $publicUrl;

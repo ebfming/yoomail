@@ -35,11 +35,11 @@ require_once __DIR__ . '/vendor/autoload.php';
 use OCA\YooMail\IMAP\IMAPClientFactory;
 use OCA\YooMail\IMAP\MailboxSync;
 use OCA\YooMail\Service\AccountService;
+use OCA\YooMail\Service\RealtimeAuthService;
 use OCA\YooMail\Service\Sync\ImapToDbSynchronizer;
 use OCA\YooMailRealtime\ImapIdleManager;
 use OCA\YooMailRealtime\RealtimeServer;
 use OCA\YooMailRealtime\RealtimeSyncService;
-use OCA\YooMailRealtime\RealtimeTokenService;
 use OCA\YooMailRealtime\UserConnectionRegistry;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\IConfig;
@@ -65,7 +65,7 @@ try {
 
     // Assemble our realtime components
     $registry = new UserConnectionRegistry();
-    $tokenService = new RealtimeTokenService($config, 60);
+    $tokenService = new RealtimeAuthService($config, 60);
 
     $realtimeSyncService = new RealtimeSyncService(
         $imapClientFactory,

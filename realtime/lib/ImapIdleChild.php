@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\YooMailRealtime;
 
 use OCA\YooMail\Account;
+use OCA\YooMail\Service\RealtimeAuthService;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -32,6 +33,7 @@ class ImapIdleChild
         private string $mailboxName,
         private string $ipcHost,
         private int $ipcPort,
+        private RealtimeAuthService $tokenService,
         private LoggerInterface $logger,
         private int $idleRefreshSeconds = 1500,
         private int $maxRetries = 10,
@@ -83,8 +85,7 @@ class ImapIdleChild
                     "yoomail-realtime: [child] IDLE error account {$this->account->getId()} mailbox {$this->mailboxId} ({$this->mailboxName}): " . $e->getMessage()
                 );
                 if ($retry > $this->maxRetries) {
-                    $this->logger->error("yoomail-realtime: [child] giving up account {$this->account->getId()} mailbox {$this->mailboxId} ({$this->mailboxName})");
-                    break;
+                    $this->logger->error("yoomail-realtime: [child] retry limit reached for account {$this->account->getId()} mailbox {$this->mailboxId} ({$this->mailboxName}), continuing with max backoff");
                 }
                 $backoff = [5, 15, 60, 300];
                 $delay = $backoff[min($retry - 1, count($backoff) - 1)];
@@ -134,6 +135,11 @@ class ImapIdleChild
      */
     private function forkBackgroundSync(): void
     {
+        if ($this->hasRunningSync()) {
+            $this->logger->debug("yoomail-realtime: [child] background sync already running for account {$this->account->getId()} mailbox {$this->mailboxId}, skipping duplicate fork");
+            return;
+        }
+
         $occPath = \OC::$SERVERROOT . '/occ';
         $cmd = [
             PHP_BINARY,
@@ -196,6 +202,8 @@ class ImapIdleChild
 
     private function reportToMaster(array $payload): void
     {
+        $payload = $this->tokenService->signIpcPayload($payload);
+
         $fp = @stream_socket_client(
             "tcp://{$this->ipcHost}:{$this->ipcPort}",
             $errno,
@@ -218,7 +226,36 @@ class ImapIdleChild
 
     private function getSyncLogFile(): string
     {
+        $runtimeDir = $this->getRuntimeDirectory() . '/sync';
+        if (!is_dir($runtimeDir)) {
+            mkdir($runtimeDir, 0770, true);
+        }
+
+        return sprintf(
+            '%s/account-%d-mailbox-%d.log',
+            rtrim($runtimeDir, '/'),
+            $this->account->getId(),
+            $this->mailboxId
+        );
+    }
+
+    private function hasRunningSync(): bool
+    {
+        $this->reapChildren();
+
+        foreach ($this->procs as $entry) {
+            $status = proc_get_status($entry['proc']);
+            if ($status !== false && $status['running']) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function getRuntimeDirectory(): string
+    {
         $dataDir = \OC::$server->get(\OCP\IConfig::class)->getSystemValue('datadirectory', \OC::$SERVERROOT . '/data');
-        return rtrim((string)$dataDir, '/') . '/yoomail-realtime-sync.log';
+        return rtrim((string)$dataDir, '/') . '/yoomail-realtime';
     }
 }

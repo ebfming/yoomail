@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace OCA\YooMailRealtime;
 
+use OCA\YooMail\Service\RealtimeAuthService;
+use Psr\Log\LoggerInterface;
 use Workerman\Connection\TcpConnection;
 
 /**
@@ -18,7 +20,8 @@ class WebSocketServer
 {
     public function __construct(
         private UserConnectionRegistry $registry,
-        private RealtimeTokenService $tokenService,
+        private RealtimeAuthService $tokenService,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -39,7 +42,7 @@ class WebSocketServer
         }
 
         $token = (string)($payload['token'] ?? '');
-        $userId = $this->tokenService->consume($token);
+        $userId = $this->tokenService->consumeToken($token);
 
         if ($userId === null) {
             $connection->close(json_encode(['type' => 'error', 'message' => 'invalid token']));
@@ -55,7 +58,7 @@ class WebSocketServer
             'timestamp' => time(),
         ]));
 
-        echo "[yoomail-realtime] user $userId connected\n";
+        $this->logger->info("yoomail-realtime: user {$userId} connected");
     }
 
     /**
@@ -66,7 +69,7 @@ class WebSocketServer
         $userId = $connection->userId ?? null;
         if ($userId !== null) {
             $this->registry->remove($userId, $connection);
-            echo "[yoomail-realtime] user $userId disconnected\n";
+            $this->logger->info("yoomail-realtime: user {$userId} disconnected");
         }
     }
 }

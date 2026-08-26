@@ -526,7 +526,12 @@ export default {
 			return this.searchQuery + ' ' + str
 		},
 
-		hideMessage() {
+		hideMessage(threadId) {
+			const id = Number(threadId)
+			if (Number.isFinite(id) && this.mainStore.getEnvelope(id) !== undefined) {
+				this.mainStore.removeEnvelopeMutation({ id })
+			}
+
 			this.$router.replace({
 				name: 'mailbox',
 				params: {

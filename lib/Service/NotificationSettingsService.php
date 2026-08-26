@@ -15,12 +15,12 @@ use OCP\IURLGenerator;
 
 class NotificationSettingsService {
 	private const DEFAULTS = [
-		'nativeNewMail' => 'no',
-		'soundEnabled' => 'yes',
-		'toastEnabled' => 'yes',
-		'soundNewMail' => 'yes',
-		'soundSendSuccess' => 'yes',
-		'soundSendFail' => 'yes',
+		'nativeNewMail' => '0',
+		'soundEnabled' => '1',
+		'toastEnabled' => '1',
+		'soundNewMail' => '1',
+		'soundSendSuccess' => '1',
+		'soundSendFail' => '1',
 	];
 
 	public function __construct(
@@ -69,10 +69,26 @@ class NotificationSettingsService {
 	}
 
 	private function getSwitch(string $userId, string $key, string $default): bool {
-		return $this->config->getUserValue($userId, Application::APP_ID, $key, $default) !== 'no';
+		return $this->normalizeSwitch($this->config->getUserValue($userId, Application::APP_ID, $key, $default));
 	}
 
 	private function readSwitchValue(array $settings, string $key, string $default): string {
-		return ($settings[$key] ?? $default) === 'no' ? 'no' : 'yes';
+		return $this->normalizeSwitch($settings[$key] ?? $default) ? '1' : '0';
+	}
+
+	/**
+	 * @param mixed $value
+	 */
+	private function normalizeSwitch($value): bool {
+		if (is_bool($value)) {
+			return $value;
+		}
+
+		if (is_int($value)) {
+			return $value === 1;
+		}
+
+		$value = strtolower(trim((string)$value));
+		return in_array($value, ['1', 'true', 'yes', 'on'], true);
 	}
 }

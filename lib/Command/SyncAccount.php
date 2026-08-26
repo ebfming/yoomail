@@ -20,6 +20,7 @@ use OCA\YooMail\IMAP\IMAPClientFactory;
 use OCA\YooMail\IMAP\MailboxSync;
 use OCA\YooMail\IMAP\PreviewEnhancer;
 use OCA\YooMail\Service\AccountService;
+use OCA\YooMail\Service\RealtimeAuthService;
 use OCA\YooMail\Service\Sync\ImapToDbSynchronizer;
 use OCA\YooMail\Service\Sync\MailboxSyncDelta;
 use OCA\YooMail\Support\ConsoleLoggerDecorator;
@@ -227,7 +228,7 @@ final class SyncAccount extends Command {
 	 * can push a "sync-done" signal to online clients.
 	 */
 	private function notifyIpc(string $hostPort, int $accountId, ?int $mailboxId, bool $ok, ?string $userId, ?array $realtimePayload = null): void {
-		$payload = json_encode(array_filter([
+		$payload = array_filter([
 			'type' => 'sync-done',
 			'userId' => $userId,
 			'accountId' => $accountId,
@@ -235,7 +236,8 @@ final class SyncAccount extends Command {
 			'sync' => $ok ? 'ok' : 'fail',
 			'timestamp' => time(),
 			'realtimePayload' => $realtimePayload,
-		], static fn ($value) => $value !== null));
+		], static fn ($value) => $value !== null);
+		$payload = json_encode((new RealtimeAuthService(\OC::$server->get(\OCP\IConfig::class)))->signIpcPayload($payload));
 
 		$fp = @stream_socket_client(
 			"tcp://$hostPort",

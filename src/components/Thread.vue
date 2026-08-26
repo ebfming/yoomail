@@ -303,10 +303,7 @@ export default {
 
 				if (thread.length === 0) {
 					logger.info('thread could not be found and is empty', { threadId })
-					showWarning(t('yoomail', 'This email may have been deleted. Refresh the mailbox to fetch it again and retry.'))
-					this.errorRetry = true
-					this.loading = false
-					this.$emit('thread-not-found')
+					await this.handleMissingThread(threadId)
 					return
 				}
 
@@ -314,10 +311,7 @@ export default {
 			} catch (error) {
 				logger.error('could not load envelope thread', { threadId, error })
 				if (error?.response?.status === 403) {
-					showWarning(t('yoomail', 'This email may have been deleted. Refresh the mailbox to fetch it again and retry.'))
-					this.errorRetry = true
-					this.loading = false
-					this.$emit('thread-not-found')
+					await this.handleMissingThread(threadId)
 				} else if (error?.response?.status === 500) {
 					this.error = { message: t('yoomail', 'Email was not able to be opened') }
 					this.loading = false
@@ -327,6 +321,32 @@ export default {
 					this.loading = false
 				}
 			}
+		},
+
+		async handleMissingThread(threadId) {
+			const mailboxId = Number(this.$route.params.mailboxId)
+			showWarning(t('yoomail', 'This email may have been deleted. Refresh the mailbox to fetch it again and retry.'))
+			this.errorRetry = true
+			this.loading = false
+
+			if (this.mainStore.getEnvelope(threadId) !== undefined) {
+				this.mainStore.removeEnvelopeMutation({ id: threadId })
+			}
+
+			if (Number.isFinite(mailboxId)) {
+				try {
+					await this.mainStore.syncEnvelopes({
+						mailboxId,
+						query: '',
+						init: false,
+						repairVanished: true,
+					})
+				} catch (error) {
+					logger.debug('could not refresh mailbox after missing thread', { threadId, error })
+				}
+			}
+
+			this.$emit('thread-not-found', threadId)
 		},
 
 		/**
