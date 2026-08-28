@@ -5,6 +5,7 @@
 <template>
 	<Modal
 		v-if="showMessageComposer"
+		class="new-message-modal"
 		:size="modalSize"
 		:name="modalTitle"
 		:additional-trap-elements="additionalTrapElements"
@@ -649,6 +650,10 @@ export default {
 
 <style lang="scss" scoped>
 @use '../../css/variables.scss';
+
+.new-message-modal {
+	background-color: rgba(0, 0, 0, 0.28);
+}
 
 @media only screen and (max-width: 600px) {
 	:deep(.modal-container) {
