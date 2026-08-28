@@ -257,6 +257,8 @@ export default {
 	},
 
 	beforeDestroy() {
+		this.bus.off('append-to-body-at-cursor', this.appendToBodyAtCursor)
+		this.bus.off('insert-text-block', this.insertTextBlock)
 		this.unregisterSourceEditingInputListener()
 
 		if (this.editorInstance?.plugins.has('SourceEditing') && this.sourceEditingModeHandler) {
@@ -441,12 +443,16 @@ export default {
 						return
 					}
 
-					item.panelView.position = DropdownView._getOptimalPosition({
+					const position = DropdownView._getOptimalPosition({
 						element: item.panelView.element,
 						target: item.buttonView.element,
 						fitInViewport: true,
 						positions: panelPositions,
-					}).name
+					})
+
+					if (position) {
+						item.panelView.position = position.name
+					}
 				})
 			}
 		},

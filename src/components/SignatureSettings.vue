@@ -189,7 +189,7 @@ export default {
 		},
 
 		async deleteSignature() {
-			this.signature = null
+			this.signature = ''
 			await this.saveSignature()
 		},
 

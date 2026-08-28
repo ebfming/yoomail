@@ -12,6 +12,10 @@ All releases in this repository currently build on top of upstream
 
 ### Fixed
 
+- Fixed signature editor crashes when opening rich-text dropdowns such as text
+  alignment. YooMail now guards CKEditor dropdown positioning when the editor
+  cannot calculate a viewport position, and keeps empty signatures as strings
+  instead of passing `null` into the shared editor component.
 - Fixed YooMail page routes returning HTTP 500 after realtime hardening.
   The shared realtime auth helper now lives in the main app namespace, and
   `RealtimeController` no longer redeclares the parent controller request
