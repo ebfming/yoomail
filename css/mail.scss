@@ -241,7 +241,7 @@
 
 /* Message detail layout tuning */
 #mail-thread-header {
-	padding-bottom: calc(var(--default-grid-baseline) * 1) !important;
+	padding-bottom: calc(var(--default-grid-baseline) * 1.5) !important;
 	margin-bottom: 0 !important;
 }
 
@@ -254,56 +254,72 @@
 	display: flex;
 	align-items: center;
 	padding-inline-start: calc(var(--default-grid-baseline) * 5) !important;
-	padding-inline-end: calc(var(--default-grid-baseline) * 10) !important;
+	padding-inline-end: calc(var(--default-grid-baseline) * 6) !important;
 	margin-inline-end: 0 !important;
-	margin: calc(var(--default-grid-baseline) * 2) 0 !important;
+	margin: calc(var(--default-grid-baseline) * 1.5) 0 !important;
+	min-height: calc(var(--default-grid-baseline) * 9);
 }
 
 #mail-thread-header-fields h2 {
 	width: 100%;
 	margin-top: 0 !important;
-	padding-bottom: calc(var(--default-grid-baseline) * 1) !important;
-	font-size: clamp(14px, 2vw, 24px);
-	line-height: 1.2;
+	padding-bottom: 0 !important;
+	font-size: clamp(15px, 1.55vw, 22px);
+	line-height: 1.25;
+	font-weight: 650;
+	letter-spacing: -0.01em;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 #mail-message .envelope {
-	padding-bottom: calc(var(--default-grid-baseline) * 2);
+	border-width: 1px;
+	box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
+	margin-inline: calc(var(--default-grid-baseline) * 3);
+	padding-bottom: calc(var(--default-grid-baseline) * 3);
 }
 
 #mail-message .envelope:last-of-type {
-	margin-top: calc(var(--default-grid-baseline) * 5);
+	margin-top: calc(var(--default-grid-baseline) * 4);
 }
 
 #mail-message .envelope--expanded {
-	min-height: 220px;
+	min-height: 200px;
 }
 
 #mail-message .html-message-body {
-	margin: 2px calc(var(--default-grid-baseline) * 3) 0 calc(var(--default-grid-baseline) * 5);
-	padding: var(--default-grid-baseline) calc(var(--default-grid-baseline) * 3);
+	margin: calc(var(--default-grid-baseline) * 1.5) calc(var(--default-grid-baseline) * 4) 0 calc(var(--default-grid-baseline) * 4);
+	padding: calc(var(--default-grid-baseline) * 2) calc(var(--default-grid-baseline) * 3);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-container);
 }
 
 #mail-message .reply-buttons {
-	margin: 10px 10px;
+	margin: calc(var(--default-grid-baseline) * 2) calc(var(--default-grid-baseline) * 4) calc(var(--default-grid-baseline) * 2);
 }
 
 @media only screen and (max-width: 600px) {
 	#mail-thread-header-fields {
-		padding-inline-start: calc(var(--default-grid-baseline) * 3) !important;
+		padding-inline-start: calc(var(--default-grid-baseline) * 2) !important;
 		padding-inline-end: calc(var(--default-grid-baseline) * 3) !important;
+		min-height: calc(var(--default-grid-baseline) * 8);
 	}
 
 	#mail-thread-header-fields h2 {
-		font-size: 20px;
+		font-size: 18px;
+	}
+
+	#mail-message .envelope {
+		margin-inline: calc(var(--default-grid-baseline) * 2);
 	}
 
 	#mail-message .envelope--expanded {
-		min-height: 180px;
+		min-height: 170px;
 	}
 
 	#mail-message .html-message-body {
 		margin-inline: calc(var(--default-grid-baseline) * 2);
+		padding-inline: calc(var(--default-grid-baseline) * 2);
 	}
 }
 

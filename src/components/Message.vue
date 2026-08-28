@@ -207,12 +207,12 @@ export default {
 
 .message-imip {
 	padding: 5px 10px;
-	margin-inline-start: calc(var(--default-grid-baseline) * 11);
+	margin-inline: calc(var(--default-grid-baseline) * 4);
 }
 
 @media (max-width: 600px) {
 	.message-imip {
-		margin-inline-start: 0;
+		margin-inline: calc(var(--default-grid-baseline) * 2);
 	}
 }
 
@@ -235,7 +235,7 @@ export default {
 }
 
 .reply-buttons {
-	margin: 5px calc(var(--default-grid-baseline) * 3) calc(var(--default-grid-baseline) * 3) calc(var(--default-grid-baseline) * 14);
+	margin: calc(var(--default-grid-baseline) * 2) calc(var(--default-grid-baseline) * 4) calc(var(--default-grid-baseline) * 2);
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
@@ -261,8 +261,8 @@ export default {
 	}
 
 	@media (max-width: #{variables.$breakpoint-mobile}) {
-        margin-inline: calc(var(--default-grid-baseline) * 3);
-    }
+		margin-inline: calc(var(--default-grid-baseline) * 2);
+	}
 }
 
 @media screen and (max-width: #{variables.$breakpoint-mobile}) {

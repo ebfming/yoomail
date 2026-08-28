@@ -208,14 +208,16 @@ export default {
 // account for 12px (was 8) margin on iframe body
 // should be 12px so it maches the rest of the content
 .html-message-body {
-	margin : 2px calc(var(--default-grid-baseline) * 3) 0 calc(var(--default-grid-baseline) * 14);
+	margin: calc(var(--default-grid-baseline) * 1.5) calc(var(--default-grid-baseline) * 4) 0;
 	background-color: var(--color-main-background);
-	border-radius: var(--border-radius-element);
-	padding: var(--default-grid-baseline) calc(var(--default-grid-baseline) * 3);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-container);
+	padding: calc(var(--default-grid-baseline) * 2) calc(var(--default-grid-baseline) * 3);
 
 	@media (max-width: 600px) {
-        margin-inline: calc(var(--default-grid-baseline) * 3);
-    }
+		margin-inline: calc(var(--default-grid-baseline) * 2);
+		padding-inline: calc(var(--default-grid-baseline) * 2);
+	}
 }
 
 #mail-message-has-blocked-content {
@@ -229,7 +231,7 @@ export default {
 	display: flex;
 	background-color: var(--color-main-background);
 	border-radius: var(--border-radius-element);
-	padding: 0 calc(var(--default-grid-baseline) * 3);
+	padding: 0 calc(var(--default-grid-baseline) * 2);
 
 	// TODO: collapse quoted text and remove inner scrollbar
 	@media only screen {

@@ -1315,17 +1315,18 @@ export default {
 		&__header {
 			position: relative;
 			display: flex;
-			align-items: center;
-			padding: var(--border-radius-element) var(--border-radius-container) var(--border-radius-container) var(--border-radius-container);
+			align-items: flex-start;
+			gap: calc(var(--default-grid-baseline) * 2);
+			padding: calc(var(--default-grid-baseline) * 3) var(--border-radius-container);
 			border-radius: var(--border-radius);
-			min-height: 68px; /* prevents jumping between open/collapsed */
+			min-height: 64px; /* prevents jumping between open/collapsed */
 
 			.left {
 				display: flex;
-				align-items: center;
+				align-items: flex-start;
 				min-width: 0;
 				flex: 1 1 auto;
-				gap: 8px;
+				gap: calc(var(--default-grid-baseline) * 2);
 
 				.envelope__header__left__sender-subject-tags {
 					min-width: 0;
@@ -1341,7 +1342,8 @@ export default {
 				margin-inline-start: auto;
 				display: flex;
 				align-items: center;
-				gap: 4px;
+				gap: calc(var(--default-grid-baseline) * 1.5);
+				padding-block-start: calc(var(--default-grid-baseline) * 0.5);
 			}
 
 			&__avatar {
@@ -1409,12 +1411,15 @@ export default {
 		}
 
 		.subline {
-			margin-inline-start: 8px;
+			margin-inline-start: 0;
+			margin-top: calc(var(--default-grid-baseline) * 0.5);
 			color: var(--color-text-maxcontrast);
 			cursor: default;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
+			font-size: 13px;
+			line-height: 1.4;
 		}
 
 		&--expanded {
@@ -1433,6 +1438,16 @@ export default {
 
 	.left:not(.seen) {
 		font-weight: bold;
+	}
+
+	.sender {
+		font-size: 14px;
+		line-height: 1.35;
+	}
+
+	.sender--expanded {
+		font-size: 15px;
+		font-weight: 600;
 	}
 
 	.tag-group__label {
@@ -1471,12 +1486,14 @@ export default {
 
 	.envelope__recipients {
 		// align with sender name: header padding + avatar (40px) + gap (2 * grid-baseline)
-		padding-inline-start: calc(var(--border-radius-container) + var(--default-grid-baseline) * 10 + var(--default-grid-baseline) * 3);
+		padding-inline-start: calc(var(--border-radius-container) + var(--default-grid-baseline) * 10 + var(--default-grid-baseline) * 4);
 		padding-inline-end: var(--border-radius-container);
-		padding-block: var(--default-grid-baseline) calc(var(--default-grid-baseline) * 2);
+		padding-block: 0 calc(var(--default-grid-baseline) * 2.5);
 		display: flex;
 		flex-direction: column;
 		gap: calc(var(--default-grid-baseline));
+		font-size: 13px;
+		line-height: 1.45;
 
 		.recipients {
 			display: flex;

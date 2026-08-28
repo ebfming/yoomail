@@ -106,10 +106,24 @@ export default {
 </style>
 
 <style lang="scss" scoped>
+#mail-content {
+	margin: calc(var(--default-grid-baseline) * 1.5) calc(var(--default-grid-baseline) * 4) 0;
+
+	@media (max-width: 600px) {
+		margin-inline: calc(var(--default-grid-baseline) * 2);
+	}
+}
+
 #message-container,
 .mail-signature {
 	white-space: pre-wrap;
-	padding-inline: calc(var(--default-grid-baseline) * 3);
+	color: var(--color-main-text);
+	font-size: 14px;
+	line-height: 1.65;
+	padding: calc(var(--default-grid-baseline) * 2) calc(var(--default-grid-baseline) * 3);
+	border: 1px solid var(--color-border);
+	border-radius: var(--border-radius-container);
+	background: var(--color-main-background);
 }
 
 .mail-signature, .quoted {
