@@ -55,6 +55,10 @@ All releases in this repository currently build on top of upstream
 
 ### Changed
 
+- Added basic rich-text image alignment for composed HTML messages. Images can
+  now be aligned left, centered, or aligned right from the CKEditor toolbar,
+  and YooMail inlines the critical alignment styles before saving or sending
+  so outgoing mail does not depend on CKEditor CSS being present.
 - Hardened realtime IPC delivery. IDLE workers and detached sync commands now
   HMAC-sign local IPC payloads, the realtime service rejects unsigned or
   expired IPC messages, and the IPC listener is bound to `127.0.0.1`.

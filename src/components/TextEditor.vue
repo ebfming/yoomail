@@ -39,6 +39,7 @@ import {
 	Heading,
 	Image,
 	ImageResize,
+	ImageStyle,
 	ImageUpload,
 	Italic,
 	Link,
@@ -150,6 +151,7 @@ export default {
 				Image,
 				ImageUpload,
 				ImageResize,
+				ImageStyle,
 				Font,
 				RemoveFormat,
 				Base64UploadAdapter,
@@ -170,6 +172,9 @@ export default {
 				'superscript',
 				'fontBackgroundColor',
 				'insertImage',
+				'imageStyle:alignBlockLeft',
+				'imageStyle:block',
+				'imageStyle:alignBlockRight',
 				'alignment',
 				'textDirection:ltr',
 				'textDirection:rtl',
@@ -246,6 +251,15 @@ export default {
 							styles: true,
 						},
 					],
+				},
+				image: {
+					styles: {
+						options: [
+							'alignBlockLeft',
+							'block',
+							'alignBlockRight',
+						],
+					},
 				},
 
 			},

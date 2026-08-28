@@ -546,6 +546,7 @@ import { EDITOR_MODE_HTML, EDITOR_MODE_TEXT } from '../store/constants.js'
 import useMainStore from '../store/mainStore.js'
 import { parseEmailList } from '../util/emailAddress.js'
 import { formatDateTime } from '../util/formatDateTime.js'
+import { normalizeImageAlignment } from '../util/imageAlignment.js'
 import { containsImage, detect, html, toHtml, toPlain } from '../util/text.js'
 import textBlockSvg from './../../img/text_snippet.svg'
 
@@ -1274,7 +1275,7 @@ export default {
 			}
 
 			if (data.isHtml) {
-				data.bodyHtml = this.bodyVal
+				data.bodyHtml = normalizeImageAlignment(this.bodyVal)
 			} else if (data.isPgpMime) {
 				data.bodyPlain = this.bodyVal
 			} else {
