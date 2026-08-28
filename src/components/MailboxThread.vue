@@ -183,6 +183,7 @@
 							:name="t('yoomail', 'Other')" />
 						<Mailbox
 							class="nameother"
+							:class="{ 'priority-first-list': !hasVisiblePrioritySectionHeader }"
 							:load-more-label="t('yoomail', 'Load more other messages')"
 							:account="unifiedAccount"
 							:mailbox="unifiedInbox"
@@ -364,6 +365,12 @@ export default {
 				this.appendToSearch(this.favoriteQuery),
 			)
 			return envelopes.length > 0
+		},
+
+		hasVisiblePrioritySectionHeader() {
+			return this.hasFavoriteEnvelopes
+				|| this.hasFollowUpEnvelopes
+				|| this.hasImportantEnvelopes
 		},
 
 		/**
@@ -686,6 +693,11 @@ export default {
 .information-icon {
 	opacity: .7;
 }
+
+.priority-first-list {
+	margin-top: calc(var(--default-grid-baseline) * 2);
+}
+
 @media only screen and (max-width: 1024px) {
 	.information-icon {
 		margin-bottom: 20px;
