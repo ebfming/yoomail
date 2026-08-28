@@ -172,6 +172,9 @@ export default {
 				'superscript',
 				'fontBackgroundColor',
 				'insertImage',
+				'imageStyle:inline',
+				'imageStyle:alignLeft',
+				'imageStyle:alignRight',
 				'imageStyle:alignBlockLeft',
 				'imageStyle:block',
 				'imageStyle:alignBlockRight',
@@ -255,6 +258,9 @@ export default {
 				image: {
 					styles: {
 						options: [
+							'inline',
+							'alignLeft',
+							'alignRight',
 							'alignBlockLeft',
 							'block',
 							'alignBlockRight',
@@ -704,6 +710,17 @@ https://github.com/ckeditor/ckeditor5/issues/1142
 /* Default ckeditor value of padding-inline-start, to overwrite the global styling from server */
 .ck-content ul, .ck-content ol {
 	padding-inline-start: 40px;
+}
+
+.ck-content .image-inline {
+	align-items: center !important;
+	vertical-align: middle !important;
+}
+
+.ck-content .image-inline img,
+.ck-content .image-inline picture {
+	align-self: center !important;
+	vertical-align: middle !important;
 }
 
 .ck-read-only {

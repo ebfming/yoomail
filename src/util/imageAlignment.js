@@ -4,15 +4,35 @@
  */
 
 const ALIGNMENT_STYLES = {
+	'image-style-align-left': {
+		clear: 'none',
+		display: 'table',
+		float: 'left',
+		marginLeft: '0',
+		marginRight: '1.5em',
+	},
+	'image-style-align-right': {
+		clear: 'none',
+		display: 'table',
+		float: 'right',
+		marginLeft: '1.5em',
+		marginRight: '0',
+	},
 	'image-style-block-align-left': {
+		clear: 'both',
+		display: 'table',
 		marginLeft: '0',
 		marginRight: 'auto',
 	},
 	'image-style-align-center': {
+		clear: 'both',
+		display: 'table',
 		marginLeft: 'auto',
 		marginRight: 'auto',
 	},
 	'image-style-block-align-right': {
+		clear: 'both',
+		display: 'table',
 		marginLeft: 'auto',
 		marginRight: '0',
 	},
@@ -48,8 +68,6 @@ export function normalizeImageAlignment(value) {
 			}
 
 			mergeStyle(figure, {
-				clear: 'both',
-				display: 'table',
 				textAlign: 'center',
 				...styles,
 			})
@@ -61,6 +79,22 @@ export function normalizeImageAlignment(value) {
 					maxWidth: '100%',
 				})
 			}
+		}
+	}
+
+	for (const image of document.body.querySelectorAll('img:not(figure img)')) {
+		mergeStyle(image, {
+			height: 'auto',
+			maxWidth: '100%',
+			verticalAlign: 'middle',
+		})
+
+		for (const [className, styles] of Object.entries(ALIGNMENT_STYLES)) {
+			if (!image.classList.contains(className)) {
+				continue
+			}
+
+			mergeStyle(image, styles)
 		}
 	}
 
