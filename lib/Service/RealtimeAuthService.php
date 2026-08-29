@@ -121,6 +121,15 @@ class RealtimeAuthService
      */
     private function normalizeValue($value)
     {
+        // JsonSerializable objects (e.g. MailboxStats) must be normalized to
+        // their serialized array form so that signing and verifying produce
+        // the same canonical JSON. Otherwise the object form (jsonSerialize
+        // key order) and the decoded array form (ksort order) diverge and the
+        // HMAC never matches.
+        if ($value instanceof \JsonSerializable) {
+            $value = $value->jsonSerialize();
+        }
+
         if (!is_array($value)) {
             return $value;
         }
