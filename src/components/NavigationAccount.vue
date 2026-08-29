@@ -8,7 +8,7 @@
 		<NcAppNavigationCaption
 			v-if="visible"
 			:id="id"
-			:key="id"
+			:key="id + '-' + captionKey"
 			:name="account.emailAddress"
 			@update:open="onMenuToggle">
 			<!-- Actions -->
@@ -173,6 +173,7 @@ export default {
 
 	data() {
 		return {
+			captionKey: 0,
 			menuOpen: false,
 			loading: {
 				delete: false,
@@ -227,6 +228,15 @@ export default {
 			}
 			return ''
 		},
+	},
+
+	mounted() {
+		// Recreate the action popover after router navigation. The version of
+		// floating-vue bundled with this Mail base can otherwise keep a stale
+		// reference node and place the menu at the document origin.
+		this.$nextTick(() => {
+			this.captionKey += 1
+		})
 	},
 
 	methods: {

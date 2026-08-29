@@ -1929,7 +1929,22 @@ export default function mainStoreActions() {
 			return quickAction
 		},
 		sortAccounts(accounts) {
-			accounts.sort((a1, a2) => a1.order - a2.order)
+			accounts.sort((a1, a2) => {
+				const order1 = Number(a1.order)
+				const order2 = Number(a2.order)
+				const hasOrder1 = Number.isFinite(order1)
+				const hasOrder2 = Number.isFinite(order2)
+
+				if (hasOrder1 && hasOrder2 && order1 !== order2) {
+					return order1 - order2
+				}
+
+				if (hasOrder1 !== hasOrder2) {
+					return hasOrder1 ? -1 : 1
+				}
+
+				return Number(a1.id) - Number(a2.id)
+			})
 			return accounts
 		},
 		/**
@@ -1994,9 +2009,16 @@ export default function mainStoreActions() {
 		addAccountMutation(account) {
 			account.collapsed = account.collapsed ?? true
 
+			const existing = this.accountsUnmapped[account.id]
+			if (existing?.order !== undefined && account.order === undefined) {
+				account.order = existing.order
+			}
+
 			Vue.set(this.accountsUnmapped, account.id, account)
 
-			this.accountList.push(account.id)
+			if (!this.accountList.includes(account.id)) {
+				this.accountList.push(account.id)
+			}
 
 			const mappedAccounts = this.accountList.map((id) => this.accountsUnmapped[id])
 			this.accountList = this.sortAccounts(mappedAccounts).map((a) => a.id)

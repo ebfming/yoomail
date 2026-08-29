@@ -101,7 +101,9 @@ class MailAccountMapper extends QBMapper {
 		$query = $qb
 			->select('*')
 			->from($this->getTableName())
-			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+			->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+			->orderBy('order', 'ASC')
+			->addOrderBy('id', 'ASC');
 
 		return $this->findEntities($query);
 	}

@@ -143,3 +143,10 @@ export default {
 }
 
 </style>
+import useMainStore from '../store/mainStore.js'
+	computed: {
+		...mapStores(useMainStore),
+		hasAccounts() {
+			return this.mainStore.getAccounts.length > 1
+		},
+	},

@@ -593,6 +593,7 @@ export default {
 		 * @param {boolean} open menu opened state
 		 */
 		onMenuToggle(open) {
+			this.menuOpen = open
 			if (open) {
 				this.fetchMailboxStats()
 			} else {
