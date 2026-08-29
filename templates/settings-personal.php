@@ -56,6 +56,12 @@
 		<p class="settings-hint yoomail-setting-copy"><?php p($l->t('These reminders are rendered by YooMail itself and do not affect other Nextcloud apps.')); ?></p>
 	</div>
 
+	<div class="yoomail-settings-group">
+		<input type="checkbox" class="checkbox" id="ym-top-app-icon-enabled" <?php if (!empty($_['notificationData']['settings']['topAppIconEnabled'])) { echo 'checked'; } ?>>
+		<label class="yoomail-checkbox-label" for="ym-top-app-icon-enabled"><?php p($l->t('Show a new mail marker on the YooMail top app icon')); ?></label>
+		<p class="settings-hint yoomail-setting-copy"><?php p($l->t('The marker is scoped to this Nextcloud site and clears when you open YooMail.')); ?></p>
+	</div>
+
 	<div class="yoomail-setting-actions">
 		<button type="button" class="button primary" id="ym-save-notification-settings"><?php p($l->t('Save')); ?></button>
 	</div>

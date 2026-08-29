@@ -80,6 +80,7 @@
 					nativeNewMail: checkedValue('#ym-native-new-mail'),
 					soundEnabled: checkedValue('#ym-sound-enabled'),
 					toastEnabled: checkedValue('#ym-toast-enabled'),
+					topAppIconEnabled: checkedValue('#ym-top-app-icon-enabled'),
 					soundNewMail: checkedValue('#ym-sound-new-mail'),
 					soundSendSuccess: checkedValue('#ym-sound-send-success'),
 					soundSendFail: checkedValue('#ym-sound-send-fail'),

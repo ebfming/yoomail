@@ -8,6 +8,7 @@ const TAB_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`
 const LEADER_KEY = 'yoomail-global-notifier-leader'
 const CLAIM_PREFIX = 'yoomail-global-notifier-claim:'
 const NOTIFICATION_KEY = 'yoomail-global-notifier-new-mail'
+const APP_ICON_ALERT_KEY = 'yoomail-global-notifier-app-icon-alert'
 const SETTINGS_EVENT_KEY = 'yoomail-notification-settings-updated'
 const LEASE_MS = 12000
 const HEARTBEAT_MS = 4000
@@ -20,6 +21,7 @@ const defaultSettings = {
 	nativeNewMail: false,
 	soundEnabled: true,
 	toastEnabled: true,
+	topAppIconEnabled: true,
 	soundNewMail: true,
 	soundSendSuccess: true,
 	soundSendFail: true,
@@ -32,6 +34,8 @@ let reconnectTimer = null
 let reconnectAttempts = 0
 let heartbeatTimer = null
 let toastHost = null
+let appIconStyle = null
+let appMenuObserver = null
 let isStopped = false
 const audioCache = {}
 const memoryClaims = new Map()
@@ -92,6 +96,7 @@ function generateAppUrl(path) {
 function hasEnabledNewMailChannel() {
 	return settings.nativeNewMail
 		|| settings.toastEnabled
+		|| settings.topAppIconEnabled
 		|| (settings.soundEnabled && settings.soundNewMail)
 }
 
@@ -117,6 +122,128 @@ function writeJson(key, value) {
 		window.localStorage.setItem(key, JSON.stringify(value))
 	} catch (error) {
 	}
+}
+
+function isYooMailPage() {
+	return window.location.pathname.startsWith(generateAppUrl(`/apps/${APP_ID}`))
+}
+
+function topAppLink() {
+	return document.querySelector(`.app-menu-entry__link[href*="/apps/${APP_ID}"]`)
+}
+
+function ensureAppIconStyle() {
+	if (appIconStyle !== null || !document.head) {
+		return
+	}
+
+	appIconStyle = document.createElement('style')
+	appIconStyle.id = 'yoomail-global-app-icon-alert-style'
+	appIconStyle.textContent = `
+		.app-menu-entry__link.yoomail-app-icon-alert {
+			position: relative;
+		}
+		.app-menu-entry__link.yoomail-app-icon-alert::after {
+			content: "";
+			position: absolute;
+			top: 8px;
+			right: 8px;
+			width: 8px;
+			height: 8px;
+			border: 2px solid color-mix(in srgb, var(--color-main-background) 92%, transparent);
+			border-radius: 50%;
+			background: var(--color-primary-element);
+			box-shadow:
+				0 0 0 1px color-mix(in srgb, var(--color-main-text) 14%, transparent),
+				0 2px 6px color-mix(in srgb, var(--color-primary-element) 42%, transparent);
+			animation: yoomail-app-icon-alert-pulse 2.4s ease-out infinite;
+			pointer-events: none;
+		}
+		@keyframes yoomail-app-icon-alert-pulse {
+			0% {
+				box-shadow:
+					0 0 0 1px color-mix(in srgb, var(--color-main-text) 14%, transparent),
+					0 0 0 0 color-mix(in srgb, var(--color-primary-element) 32%, transparent);
+			}
+			70% {
+				box-shadow:
+					0 0 0 1px color-mix(in srgb, var(--color-main-text) 10%, transparent),
+					0 0 0 6px transparent;
+			}
+			100% {
+				box-shadow:
+					0 0 0 1px color-mix(in srgb, var(--color-main-text) 10%, transparent),
+					0 0 0 0 transparent;
+			}
+		}
+		@media (prefers-reduced-motion: reduce) {
+			.app-menu-entry__link.yoomail-app-icon-alert::after {
+				animation: none;
+			}
+		}
+	`
+	document.head.appendChild(appIconStyle)
+}
+
+function setTopAppIconAlert(enabled) {
+	ensureAppIconStyle()
+	const link = topAppLink()
+	if (!link) {
+		return
+	}
+
+	link.classList.toggle('yoomail-app-icon-alert', enabled)
+}
+
+function persistTopAppIconAlert(enabled) {
+	if (enabled) {
+		writeJson(APP_ICON_ALERT_KEY, {
+			active: true,
+			updatedAt: Date.now(),
+		})
+		return
+	}
+
+	removeStorage(APP_ICON_ALERT_KEY)
+}
+
+function applyTopAppIconAlertFromStorage() {
+	if (isYooMailPage()) {
+		persistTopAppIconAlert(false)
+		setTopAppIconAlert(false)
+		return
+	}
+
+	setTopAppIconAlert(readJson(APP_ICON_ALERT_KEY)?.active === true)
+}
+
+function watchTopAppIcon() {
+	if (appMenuObserver !== null || !document.body) {
+		return
+	}
+
+	appMenuObserver = new MutationObserver(function() {
+		applyTopAppIconAlertFromStorage()
+	})
+	appMenuObserver.observe(document.body, {
+		childList: true,
+		subtree: true,
+	})
+}
+
+function markTopAppIconAlert() {
+	if (!settings.topAppIconEnabled) {
+		persistTopAppIconAlert(false)
+		setTopAppIconAlert(false)
+		return
+	}
+
+	if (isYooMailPage()) {
+		return
+	}
+
+	persistTopAppIconAlert(true)
+	setTopAppIconAlert(true)
 }
 
 function removeStorage(key) {
@@ -222,6 +349,12 @@ async function refreshSettings() {
 		settings = normalizeSettings(await response.json())
 		diagnostics.lastSettingsRefreshAt = new Date().toISOString()
 		setRuntimeHealth('settings-ready')
+		if (!settings.topAppIconEnabled) {
+			persistTopAppIconAlert(false)
+			setTopAppIconAlert(false)
+		} else {
+			applyTopAppIconAlertFromStorage()
+		}
 		updateLeadership()
 	} catch (error) {
 		diagnostics.lastError = `settings: ${error?.message || error}`
@@ -369,6 +502,7 @@ function handleRealtimePayload(message) {
 	}
 
 	setRuntimeHealth('new-mail')
+	markTopAppIconAlert()
 	broadcastNewMail(messages)
 	notifyNewMail(messages)
 }
@@ -481,6 +615,7 @@ function handleBroadcastNewMail(payload) {
 		return
 	}
 
+	markTopAppIconAlert()
 	notifyNewMail(payload.messages, true)
 }
 
@@ -693,6 +828,10 @@ function notifyNewMail(messages, broadcast = false) {
 
 function applyLocalSettings(nextSettings) {
 	settings = normalizeSettings(Object.assign({}, settings, nextSettings || {}))
+	if (!settings.topAppIconEnabled) {
+		persistTopAppIconAlert(false)
+		setTopAppIconAlert(false)
+	}
 	updateLeadership()
 }
 
@@ -741,6 +880,11 @@ function init() {
 			return
 		}
 
+		if (event.key === APP_ICON_ALERT_KEY) {
+			applyTopAppIconAlertFromStorage()
+			return
+		}
+
 		if (event.key !== SETTINGS_EVENT_KEY || !event.newValue) {
 			return
 		}
@@ -756,7 +900,15 @@ function init() {
 		releaseLeadership()
 	})
 	document.addEventListener('visibilitychange', updateLeadership)
+	watchTopAppIcon()
+	document.addEventListener('click', function(event) {
+		if (event.target?.closest?.(`.app-menu-entry__link[href*="/apps/${APP_ID}"]`)) {
+			persistTopAppIconAlert(false)
+			setTopAppIconAlert(false)
+		}
+	})
 
+	applyTopAppIconAlertFromStorage()
 	refreshSettings()
 	window.setInterval(refreshSettings, SETTINGS_REFRESH_MS)
 	updateLeadership()

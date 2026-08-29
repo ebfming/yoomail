@@ -66,6 +66,8 @@ OC.L10N.register(
     "Test send fail sound" : "测试发送失败提示音",
     "Show YooMail pop-up reminders in the bottom-right corner" : "在右下角显示 YooMail 弹窗提醒",
     "These reminders are rendered by YooMail itself and do not affect other Nextcloud apps." : "这些提醒由 YooMail 自身渲染，不会影响其他 Nextcloud 应用。",
+    "Show a new mail marker on the YooMail top app icon" : "在 YooMail 顶部应用图标上显示新邮件标记",
+    "The marker is scoped to this Nextcloud site and clears when you open YooMail." : "该标记仅作用于当前 Nextcloud 站点，并会在打开 YooMail 后清除。",
     "This browser does not support native notifications." : "当前浏览器不支持原生通知。",
     "Browser notification permission: granted" : "浏览器通知权限：已允许",
     "Browser notification permission: denied" : "浏览器通知权限：已拒绝",

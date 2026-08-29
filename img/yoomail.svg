@@ -1,9 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="YooMail">
-	<path fill="#fff" d="M4.75 6.5h22.5c1.24 0 2.25 1.01 2.25 2.25v14.5c0 1.24-1.01 2.25-2.25 2.25H4.75A2.25 2.25 0 0 1 2.5 23.25V8.75C2.5 7.51 3.51 6.5 4.75 6.5Zm.75 4.05v11.7c0 .14.11.25.25.25h20.5c.14 0 .25-.11.25-.25v-11.7L16 17.12 5.5 10.55Zm1.84-1.05L16 14.91l8.66-5.41H7.34Z"/>
-	<rect width="17" height="8.5" x="13.75" y="20.25" fill="#c77700" rx="4.25"/>
-	<g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.15">
-		<path d="m16.8 22.65 1.45 2.65m1.3-2.65-2.1 4.15"/>
-		<circle cx="22.65" cy="24.6" r="1.25"/>
-		<circle cx="26.7" cy="24.6" r="1.25"/>
+	<g fill="#fff">
+		<path d="M4 6.5h24c1.1 0 2 .9 2 2v15c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-15c0-1.1.9-2 2-2Zm1.55 3.15 10.45 6.6 10.45-6.6H5.55Zm21.95 2.6-10.6 6.7a1.7 1.7 0 0 1-1.8 0l-10.6-6.7v10.2h23v-10.2Z"/>
+		<path d="M7.2 28.9h17.6c1.5 0 2.7-1.2 2.7-2.7v-.25h-23v.25c0 1.5 1.2 2.7 2.7 2.7Z"/>
+	</g>
+	<g fill="none" stroke="#111" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.45">
+		<path d="m9.1 26.55 1.55 1.45 1.55-1.45"/>
+		<circle cx="16" cy="27.25" r=".95"/>
+		<circle cx="21.2" cy="27.25" r=".95"/>
 	</g>
 </svg>

@@ -18,6 +18,7 @@ class NotificationSettingsService {
 		'nativeNewMail' => '0',
 		'soundEnabled' => '1',
 		'toastEnabled' => '1',
+		'topAppIconEnabled' => '1',
 		'soundNewMail' => '1',
 		'soundSendSuccess' => '1',
 		'soundSendFail' => '1',
@@ -34,6 +35,7 @@ class NotificationSettingsService {
 			'nativeNewMail' => $this->getSwitch($userId, 'notification_native_new_mail', self::DEFAULTS['nativeNewMail']),
 			'soundEnabled' => $this->getSwitch($userId, 'notification_sound_enabled', self::DEFAULTS['soundEnabled']),
 			'toastEnabled' => $this->getSwitch($userId, 'notification_toast_enabled', self::DEFAULTS['toastEnabled']),
+			'topAppIconEnabled' => $this->getSwitch($userId, 'notification_top_app_icon_enabled', self::DEFAULTS['topAppIconEnabled']),
 			'soundNewMail' => $this->getSwitch($userId, 'notification_sound_new_mail', self::DEFAULTS['soundNewMail']),
 			'soundSendSuccess' => $this->getSwitch($userId, 'notification_sound_send_success', self::DEFAULTS['soundSendSuccess']),
 			'soundSendFail' => $this->getSwitch($userId, 'notification_sound_send_fail', self::DEFAULTS['soundSendFail']),
@@ -45,6 +47,7 @@ class NotificationSettingsService {
 			'nativeNewMail' => $this->readSwitchValue($settings, 'nativeNewMail', self::DEFAULTS['nativeNewMail']),
 			'soundEnabled' => $this->readSwitchValue($settings, 'soundEnabled', self::DEFAULTS['soundEnabled']),
 			'toastEnabled' => $this->readSwitchValue($settings, 'toastEnabled', self::DEFAULTS['toastEnabled']),
+			'topAppIconEnabled' => $this->readSwitchValue($settings, 'topAppIconEnabled', self::DEFAULTS['topAppIconEnabled']),
 			'soundNewMail' => $this->readSwitchValue($settings, 'soundNewMail', self::DEFAULTS['soundNewMail']),
 			'soundSendSuccess' => $this->readSwitchValue($settings, 'soundSendSuccess', self::DEFAULTS['soundSendSuccess']),
 			'soundSendFail' => $this->readSwitchValue($settings, 'soundSendFail', self::DEFAULTS['soundSendFail']),
@@ -53,6 +56,7 @@ class NotificationSettingsService {
 		$this->config->setUserValue($userId, Application::APP_ID, 'notification_native_new_mail', $values['nativeNewMail']);
 		$this->config->setUserValue($userId, Application::APP_ID, 'notification_sound_enabled', $values['soundEnabled']);
 		$this->config->setUserValue($userId, Application::APP_ID, 'notification_toast_enabled', $values['toastEnabled']);
+		$this->config->setUserValue($userId, Application::APP_ID, 'notification_top_app_icon_enabled', $values['topAppIconEnabled']);
 		$this->config->setUserValue($userId, Application::APP_ID, 'notification_sound_new_mail', $values['soundNewMail']);
 		$this->config->setUserValue($userId, Application::APP_ID, 'notification_sound_send_success', $values['soundSendSuccess']);
 		$this->config->setUserValue($userId, Application::APP_ID, 'notification_sound_send_fail', $values['soundSendFail']);

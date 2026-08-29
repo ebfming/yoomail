@@ -58,6 +58,6 @@ class GlobalNotifierAssetsListener implements IEventListener {
 
 		// This listener must start before individual Nextcloud app bundles so it can
 		// keep one realtime connection alive on every authenticated app page.
-		Util::addInitScript(Application::APP_ID, 'yoomail-site-runtime-v4');
+		Util::addInitScript(Application::APP_ID, 'yoomail-site-runtime-v5');
 	}
 }
