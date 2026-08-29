@@ -53,6 +53,7 @@ use OCA\YooMail\Listener\OptionalIndicesListener;
 use OCA\YooMail\Listener\OutOfOfficeListener;
 use OCA\YooMail\Listener\SpamReportListener;
 use OCA\YooMail\Listener\TaskProcessingListener;
+use OCA\YooMail\Listener\GlobalNotifierAssetsListener;
 use OCA\YooMail\Listener\UserDeletedListener;
 use OCA\YooMail\Notification\Notifier;
 use OCA\YooMail\Provider\MailProvider;
@@ -75,6 +76,7 @@ use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\AppFramework\Http\Events\BeforeTemplateRenderedEvent;
 use OCP\ContextChat\Events\ContentProviderRegisterEvent;
 use OCP\DB\Events\AddMissingIndicesEvent;
 use OCP\IServerContainer;
@@ -154,6 +156,7 @@ final class Application extends App implements IBootstrap {
 		$context->registerEventListener(OutOfOfficeClearedEvent::class, OutOfOfficeListener::class);
 		$context->registerEventListener(OutOfOfficeScheduledEvent::class, OutOfOfficeListener::class);
 		$context->registerEventListener(TaskSuccessfulEvent::class, TaskProcessingListener::class);
+		$context->registerEventListener(BeforeTemplateRenderedEvent::class, GlobalNotifierAssetsListener::class);
 
 		$context->registerMiddleWare(ErrorMiddleware::class);
 		$context->registerMiddleWare(ProvisioningMiddleware::class);

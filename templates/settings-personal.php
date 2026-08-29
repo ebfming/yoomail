@@ -8,7 +8,7 @@
 <div id="yoomail-personal-notification-settings" class="section">
 	<h2><?php p($l->t('YooMail notifications')); ?></h2>
 	<p class="settings-hint">
-		<?php p($l->t('These reminders only work while a YooMail page is open in your browser.')); ?>
+		<?php p($l->t('These reminders work while any page from this Nextcloud site is open in your browser.')); ?>
 	</p>
 
 	<script type="application/json" id="yoomail-personal-notification-settings-data"><?php
@@ -28,7 +28,7 @@
 	<div class="yoomail-settings-group">
 		<input type="checkbox" class="checkbox" id="ym-sound-enabled" <?php if (!empty($_['notificationData']['settings']['soundEnabled'])) { echo 'checked'; } ?>>
 		<label class="yoomail-checkbox-label" for="ym-sound-enabled"><?php p($l->t('Enable sound notifications')); ?></label>
-		<p class="settings-hint yoomail-setting-copy"><?php p($l->t('Sound playback depends on browser policy and usually requires at least one interaction with YooMail.')); ?></p>
+		<p class="settings-hint yoomail-setting-copy"><?php p($l->t('Sound playback depends on browser policy and usually requires at least one interaction with this Nextcloud site.')); ?></p>
 		<div class="yoomail-sound-grid yoomail-setting-copy">
 			<div>
 				<input type="checkbox" class="checkbox" id="ym-sound-new-mail" <?php if (!empty($_['notificationData']['settings']['soundNewMail'])) { echo 'checked'; } ?>>

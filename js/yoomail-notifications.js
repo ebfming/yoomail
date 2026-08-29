@@ -69,10 +69,10 @@
 				return
 			}
 
-			const toast = document.createElement('button')
-			toast.type = 'button'
+			const toast = document.createElement('div')
 			toast.className = 'yoomail-notification-toast'
 			toast.innerHTML = `
+			<button class="yoomail-notification-toast__close" type="button" aria-label="Close">&times;</button>
 			<div class="yoomail-notification-toast__title"></div>
 			<div class="yoomail-notification-toast__body"></div>
 		`
@@ -84,14 +84,24 @@
 				}
 				toast.remove()
 			})
+			let autoHideTimer = null
+			const dismissToast = function() {
+				if (autoHideTimer !== null) {
+					window.clearTimeout(autoHideTimer)
+					autoHideTimer = null
+				}
+				toast.classList.remove('yoomail-notification-toast--visible')
+				window.setTimeout(function() { toast.remove() }, 180)
+			}
+			toast.querySelector('.yoomail-notification-toast__close').addEventListener('click', function(event) {
+				event.stopPropagation()
+				dismissToast()
+			})
 			toastHost.appendChild(toast)
 			window.setTimeout(function() {
 				toast.classList.add('yoomail-notification-toast--visible')
 			}, 10)
-			window.setTimeout(function() {
-				toast.classList.remove('yoomail-notification-toast--visible')
-				window.setTimeout(function() { toast.remove() }, 180)
-			}, 6000)
+			autoHideTimer = window.setTimeout(dismissToast, 10000)
 		}
 
 	function buildThreadUrl(mailboxId, messageId) {
@@ -157,6 +167,11 @@
 
 		function handleNewMail(detail) {
 			const messages = Array.isArray(detail?.messages) ? detail.messages : []
+			const claimNewMail = window.OCA?.YooMailGlobalNotifier?.claimNewMail
+			if (typeof claimNewMail === 'function' && !claimNewMail(messages)) {
+				return
+			}
+
 			const dedupedMessages = messages.filter(function(message) {
 				const id = Number(message?.databaseId)
 				if (!Number.isFinite(id)) {
@@ -431,6 +446,24 @@
 					font-weight: 700;
 					line-height: 1.35;
 					margin-bottom: 6px;
+				}
+				.yoomail-notification-toast__close {
+					position: absolute;
+					top: 4px;
+					right: 6px;
+					border: none;
+					background: transparent;
+					color: var(--color-text-maxcontrast);
+					font-size: 16px;
+					line-height: 1;
+					padding: 4px 7px;
+					cursor: pointer;
+					border-radius: var(--border-radius-small, 6px);
+					z-index: 1;
+				}
+				.yoomail-notification-toast__close:hover {
+					background: var(--color-background-hover);
+					color: var(--color-main-text);
 				}
 				.yoomail-notification-toast__body {
 					color: var(--color-main-text);

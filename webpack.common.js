@@ -41,6 +41,7 @@ const plugins = [
 module.exports = async () => ({
 	entry: {
 		yoomail: path.join(__dirname, 'src/main.js'),
+		'yoomail-site-runtime-v4': path.join(__dirname, 'src/global-notifier.js'),
 		oauthpopup: path.join(__dirname, 'src/main-oauth-popup.js'),
 		settings: path.join(__dirname, 'src/main-settings'),
 		htmlresponse: path.join(__dirname, 'src/html-response.js'),

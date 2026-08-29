@@ -268,11 +268,30 @@ final class SyncAccount extends Command {
 		}
 
 		return [
+			'mailboxRole' => $this->resolveRealtimeMailboxRole($account, $mailbox),
 			'newMessages' => $newMessages,
 			'changedMessages' => $changedMessages,
 			'vanishedMessages' => $vanishedMessages,
 			'stats' => $mailbox->getStats(),
 		];
+	}
+
+	private function resolveRealtimeMailboxRole(Account $account, Mailbox $mailbox): string {
+		$mailAccount = $account->getMailAccount();
+
+		if ($mailbox->isInbox() || $mailbox->isSpecialUse('inbox')) {
+			return 'inbox';
+		}
+
+		if ($mailAccount->getTrashMailboxId() === $mailbox->getId() || $mailbox->isSpecialUse('trash')) {
+			return 'trash';
+		}
+
+		if ($mailAccount->getSentMailboxId() === $mailbox->getId() || $mailbox->isSpecialUse('sent')) {
+			return 'sent';
+		}
+
+		return 'fallback';
 	}
 
 	private function serializeRealtimeMessages(Account $account, Mailbox $mailbox, array $uids): array {
