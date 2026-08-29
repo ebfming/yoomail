@@ -32,11 +32,12 @@ yoomail/
 The repository now ships the frontend source `src/` and build toolchain, so frontend
 changes must be made in source and rebuilt (see section 5). The standalone scripts
 (`yoomail-notifications.js`, `yoomail-realtime-delta.js`, `yoomail-list-cache.js`,
-`admin-basic-settings.js`, `personal-notification-settings.js`) are referenced directly
-by PHP templates and are NOT part of the webpack build - do not let build output
-overwrite them.
-The global site notification runtime is different: `yoomail-site-runtime-v5.js` is a
-webpack build output generated from `src/global-notifier.js`.
+`personal-notification-settings.js`) are referenced directly by PHP templates and are
+NOT part of the webpack build - do not let build output overwrite them.
+The admin basic settings page is not standalone anymore: `js/admin-basic-settings.js`
+must be generated from `src/admin-basic-settings.js` through webpack.
+The global site notification runtime is also a webpack output:
+`yoomail-site-runtime-v5.js` is generated from `src/global-notifier.js`.
 
 ## 2. Global differences from upstream
 
@@ -194,6 +195,7 @@ Build output:
 
 - `js/yoomail.js` (main entry) + `js/yoomail.<id>.<hash>.js` (lazy chunks)
 - `js/oauthpopup.js`, `js/settings.js`, `js/htmlresponse.js`
+- `js/admin-basic-settings.js` from `src/admin-basic-settings.js`
 - `js/yoomail-site-runtime-v5.js` from `src/global-notifier.js`
 
 Verify before building that `src/main.js` keeps the yoomail customizations
@@ -202,7 +204,8 @@ Verify before building that `src/main.js` keeps the yoomail customizations
 `generateFilePath('yoomail', '', 'js/')`).
 
 When deploying, replace only the webpack output (`yoomail.js`, `yoomail.*.js`,
-`oauthpopup.js`, `settings.js`, `htmlresponse.js`, `yoomail-site-runtime-v5.js`
+`oauthpopup.js`, `settings.js`, `htmlresponse.js`, `admin-basic-settings.js`,
+`yoomail-site-runtime-v5.js`
 and their `.map`/`.LICENSE.txt`),
 and keep the standalone scripts listed in section 1.
 
@@ -225,6 +228,7 @@ When rebasing onto a newer upstream Mail version, check these areas first:
 8. `src/global-notifier.js` (global notification runtime and top app icon marker)
 9. `lib/Listener/GlobalNotifierAssetsListener.php`
 10. `templates/settings-personal.php`
+11. `src/admin-basic-settings.js` / `js/admin-basic-settings.js` (admin basic settings and Gmail OAuth settings)
 
 Also verify:
 

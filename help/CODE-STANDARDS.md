@@ -179,6 +179,7 @@ Shell scripts use `#` comments, XML uses `<!-- ... -->`, JS uses the block form.
   version numbers must match `appinfo/info.xml`.
 - Pointers:
   - Deployment / realtime service: `help/DEPLOYMENT.md`
+  - Gmail integration: `help/GMAIL-INTEGRATION.md`
   - Upstream diff & upgrade notes: `help/UPSTREAM-DIFF-AND-UPGRADE.md`
   - Code standards (this file): `help/CODE-STANDARDS.md`
 

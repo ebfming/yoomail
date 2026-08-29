@@ -146,6 +146,7 @@ Shell 脚本使用 `#` 注释，XML 使用 `<!-- ... -->`，JS 使用块注释�
 - `CHANGELOG.md` 遵循 [Keep a Changelog](https://keepachangelog.com/)；版本号必须与 `appinfo/info.xml` 一致。
 - 文档索引：
   - 部署 / 实时服务：`help/DEPLOYMENT.md`
+  - Gmail 接入：`help/GMAIL-INTEGRATION.md`
   - 上游差异与升级注意事项：`help/UPSTREAM-DIFF-AND-UPGRADE.md`
   - 代码规范（本文档）：`help/CODE-STANDARDS.md`
 
