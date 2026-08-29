@@ -8,7 +8,7 @@
 
 YooMail 是基于 [Nextcloud Mail](https://github.com/nextcloud/mail) 5.10.12 的二次开发产品,专注**实时收信**与**秒开阅读**体验。
 
-> [English README](README.md) · [Changelog](CHANGELOG.md) · [部署文档](help/DEPLOYMENT-zh.md) · [源码改动与升级注意事项](help/UPSTREAM-DIFF-AND-UPGRADE-zh.md) · [代码规范](help/CODE-STANDARDS-zh.md)
+> [English README](README.md) · [Changelog](CHANGELOG.md) · [部署文档](help/DEPLOYMENT-zh.md) · [全局通知](help/GLOBAL-NOTIFICATIONS-zh.md) · [源码改动与升级注意事项](help/UPSTREAM-DIFF-AND-UPGRADE-zh.md) · [代码规范](help/CODE-STANDARDS-zh.md)
 
 ## 产品特色
 
@@ -16,6 +16,7 @@ YooMail 是基于 [Nextcloud Mail](https://github.com/nextcloud/mail) 5.10.12 �
 - 内置 **Workerman + IMAP IDLE** 常驻服务,与 Nextcloud 深度集成
 - 新邮件到达 **秒级推送**,无需手动刷新或等待轮询
 - 前端通过 WebSocket 实时感知邮件变化,列表自动更新
+- 支持在当前 Nextcloud 站点任意已打开页面内触发浏览器通知、声音、右下角弹窗和顶部 app 图标点标记
 
 ### 🚀 正文缓存秒开
 - 邮件正文首次渲染后**持久化缓存**

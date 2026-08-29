@@ -531,9 +531,9 @@ function hashString(value) {
 }
 
 function claimKey(messages) {
-	const ids = messages.map(function(message) {
+	const ids = messages.map(function(message, index) {
 		const mailboxId = message?.mailboxId ?? 'mailbox'
-		const id = message?.databaseId ?? message?.messageId ?? message?.uid ?? JSON.stringify(message)
+		const id = message?.databaseId ?? message?.messageId ?? message?.uid ?? index
 		return `${mailboxId}:${id}`
 	}).sort()
 
@@ -600,6 +600,9 @@ function broadcastNewMail(messages) {
 		messages,
 		createdAt: Date.now(),
 	})
+	window.setTimeout(function() {
+		removeStorage(NOTIFICATION_KEY)
+	}, 1000)
 }
 
 function handleBroadcastNewMail(payload) {

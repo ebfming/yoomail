@@ -12,6 +12,12 @@ All releases in this repository currently build on top of upstream
 
 ### Fixed
 
+- Hardened personal notification settings initial-state rendering by escaping
+  JSON with `JSON_HEX_*` flags, preventing script-tag breakout edge cases.
+- Reduced persistent browser storage exposure for global notification metadata.
+  Cross-tab new-mail payloads are now removed shortly after broadcast, and
+  notification claim keys no longer fall back to storing serialized message
+  objects.
 - Fixed signature editor crashes when opening rich-text dropdowns such as text
   alignment. YooMail now guards CKEditor dropdown positioning when the editor
   cannot calculate a viewport position, and keeps empty signatures as strings
@@ -55,6 +61,18 @@ All releases in this repository currently build on top of upstream
 
 ### Changed
 
+- Added same-site global new-mail notifications. While any authenticated page
+  from the current Nextcloud site is open, YooMail can receive realtime INBOX
+  events and trigger the configured browser notification, sound, toast, and top
+  app icon marker channels.
+- Added a themed top app icon marker for new mail. The marker is intentionally
+  dot-only, follows Nextcloud theme variables, supports reduced-motion
+  preferences, and clears when YooMail is opened.
+- Unified the YooMail top app icon and settings icon identity with updated
+  `yoomail.svg` and `yoomail-dark.svg` assets.
+- Documented the global notification architecture, browser limitations,
+  security boundaries, and upgrade notes in
+  `help/GLOBAL-NOTIFICATIONS.md`.
 - Added basic rich-text image and text-flow alignment for composed HTML
   messages. Images can now be converted between inline, text-wrapped left /
   right, and block left / center / right styles from the CKEditor toolbar, and

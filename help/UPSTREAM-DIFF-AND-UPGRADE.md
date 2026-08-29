@@ -35,6 +35,8 @@ changes must be made in source and rebuilt (see section 5). The standalone scrip
 `admin-basic-settings.js`, `personal-notification-settings.js`) are referenced directly
 by PHP templates and are NOT part of the webpack build - do not let build output
 overwrite them.
+The global site notification runtime is different: `yoomail-site-runtime-v5.js` is a
+webpack build output generated from `src/global-notifier.js`.
 
 ## 2. Global differences from upstream
 
@@ -79,6 +81,16 @@ Flow:
 
 - `lib/Service/Sync/ImapToDbSynchronizer.php::sync` — SELECTs mailbox before syncing
 - avoids repeated cache wipe on some Chinese mail providers using localized special folders
+
+### 3.4 Global notifications and top app icon marker
+
+- `lib/Listener/GlobalNotifierAssetsListener.php` injects `yoomail-site-runtime-v5` into authenticated user pages.
+- `src/global-notifier.js` keeps one same-origin WebSocket leader tab alive and broadcasts notification events to visible same-site tabs.
+- `lib/Service/NotificationSettingsService.php` stores user notification channel preferences.
+- `templates/settings-personal.php` renders the personal notification controls.
+- `img/yoomail.svg` and `img/yoomail-dark.svg` provide the shared YooMail app icon identity.
+
+See `help/GLOBAL-NOTIFICATIONS.md` for behavior, browser limitations, and security notes.
 
 ## 4. Frontend source modifications
 
@@ -182,6 +194,7 @@ Build output:
 
 - `js/yoomail.js` (main entry) + `js/yoomail.<id>.<hash>.js` (lazy chunks)
 - `js/oauthpopup.js`, `js/settings.js`, `js/htmlresponse.js`
+- `js/yoomail-site-runtime-v5.js` from `src/global-notifier.js`
 
 Verify before building that `src/main.js` keeps the yoomail customizations
 (`moment.tz.setDefault(loadState('yoomail', 'timezone', 'UTC'))`,
@@ -189,7 +202,8 @@ Verify before building that `src/main.js` keeps the yoomail customizations
 `generateFilePath('yoomail', '', 'js/')`).
 
 When deploying, replace only the webpack output (`yoomail.js`, `yoomail.*.js`,
-`oauthpopup.js`, `settings.js`, `htmlresponse.js` and their `.map`/`.LICENSE.txt`),
+`oauthpopup.js`, `settings.js`, `htmlresponse.js`, `yoomail-site-runtime-v5.js`
+and their `.map`/`.LICENSE.txt`),
 and keep the standalone scripts listed in section 1.
 
 If the source tree is lost, it can be rebuilt from the `sourcesContent` of the deployed
@@ -208,6 +222,9 @@ When rebasing onto a newer upstream Mail version, check these areas first:
 5. `lib/Service/MessageBodyStorage.php`
 6. `appinfo/routes.php`
 7. `src/main.js` (timezone, `applyTimeFormat` 12/24h, app-rename init logic)
+8. `src/global-notifier.js` (global notification runtime and top app icon marker)
+9. `lib/Listener/GlobalNotifierAssetsListener.php`
+10. `templates/settings-personal.php`
 
 Also verify:
 

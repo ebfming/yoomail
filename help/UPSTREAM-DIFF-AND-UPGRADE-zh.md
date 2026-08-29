@@ -35,6 +35,7 @@ yoomail/
 - 仓库已随包提交前端源码 `src/` 与构建配置，前端改动必须从源码修改后重新构建，再提交 `js/` 产物。
 - `src/` 是从部署的 `js/*.map` 的 `sourcesContent` 提取的 YooMail 定制完整源码（含 `<template>` 的 .vue 原始文件），与上游 mail 5.10.12 的差异主要是 `mail` → `yoomail` 应用 id/翻译键替换及少量定制逻辑。
 - 独立脚本（`yoomail-notifications.js`、`yoomail-realtime-delta.js`、`yoomail-list-cache.js`、`admin-basic-settings.js`、`personal-notification-settings.js`）不在 webpack 构建范围内，由 PHP 模板直接引用，改动后直接提交即可，不要被 webpack 构建产物覆盖。
+- 全局站点通知运行时不属于上述独立脚本：`yoomail-site-runtime-v5.js` 是从 `src/global-notifier.js` 构建出的 webpack 产物。
 
 ## 2. 与上游的全局差异
 
@@ -79,6 +80,16 @@ YooMail 与上游 `mail` 应用可以并存，互不干扰。
 
 - `lib/Service/Sync/ImapToDbSynchronizer.php::sync` — 同步前先 SELECT 邮箱
 - 避免部分中文邮箱特殊文件夹反复清缓存
+
+### 3.4 全局通知与顶部 app 图标标记
+
+- `lib/Listener/GlobalNotifierAssetsListener.php` 在已登录用户页面注入 `yoomail-site-runtime-v5`。
+- `src/global-notifier.js` 在同源浏览器标签中保持一个 WebSocket leader,并把通知事件广播给同站点可见标签页。
+- `lib/Service/NotificationSettingsService.php` 保存用户级通知通道偏好。
+- `templates/settings-personal.php` 渲染个人通知设置。
+- `img/yoomail.svg` 与 `img/yoomail-dark.svg` 提供统一的 YooMail app 图标识别。
+
+行为边界、浏览器限制与安全说明见 `help/GLOBAL-NOTIFICATIONS-zh.md`。
 
 ## 4. 当前仓库里的关键前端改动区域
 
@@ -150,9 +161,9 @@ npm run build                     # 生产构建,产物写入 js/
 ```
 
 - 构建脚本：`NODE_ENV=production webpack --config webpack.prod.js`
-- 产物：`js/yoomail.js`（主入口）+ `js/yoomail.<id>.<hash>.js`（懒加载 chunk）+ `js/oauthpopup.js` / `js/settings.js` / `js/htmlresponse.js`
+- 产物：`js/yoomail.js`（主入口）+ `js/yoomail.<id>.<hash>.js`（懒加载 chunk）+ `js/oauthpopup.js` / `js/settings.js` / `js/htmlresponse.js` / `js/yoomail-site-runtime-v5.js`
 - 构建前确认 `src/main.js` 中的 `moment.tz.setDefault(loadState('yoomail', 'timezone', 'UTC'))`、`applyTimeFormat()`（12/24 小时制，作用于 `@nextcloud/moment`）与 `generateFilePath('yoomail', '', 'js/')` 存在（yoomail 定制，上游没有）。
-- 部署时**只替换 webpack 产物**（`yoomail.js`、`yoomail.*.js`、`oauthpopup.js`、`settings.js`、`htmlresponse.js` 及 `.map`），**不要动独立脚本**：`yoomail-notifications.js`、`yoomail-realtime-delta.js`、`yoomail-list-cache.js`、`admin-basic-settings.js`、`personal-notification-settings.js`。
+- 部署时**只替换 webpack 产物**（`yoomail.js`、`yoomail.*.js`、`oauthpopup.js`、`settings.js`、`htmlresponse.js`、`yoomail-site-runtime-v5.js` 及 `.map`），**不要动独立脚本**：`yoomail-notifications.js`、`yoomail-realtime-delta.js`、`yoomail-list-cache.js`、`admin-basic-settings.js`、`personal-notification-settings.js`。
 
 ### 5.2 从部署产物重建 src（源码丢失时）
 
@@ -184,9 +195,13 @@ npm run build                     # 生产构建,产物写入 js/
 14. `templates/settings-personal-notifications.php`
 15. `src/`（前端源码，含删除提示逻辑）
 16. `src/main.js`（时间格式 `applyTimeFormat`、时区、应用重命名等初始化定制）
-17. `js/yoomail.js`（由 `src/` 重新构建）
-18. `js/admin-basic-settings.js`
-19. `js/personal-notification-settings.js`
+17. `src/global-notifier.js`（全局通知运行时与顶部 app 图标点标记）
+18. `lib/Listener/GlobalNotifierAssetsListener.php`
+19. `templates/settings-personal.php`
+20. `js/yoomail.js`（由 `src/` 重新构建）
+21. `js/yoomail-site-runtime-v5.js`（由 `src/global-notifier.js` 重新构建）
+22. `js/admin-basic-settings.js`
+23. `js/personal-notification-settings.js`
 
 还要逐项确认：
 

@@ -8,7 +8,7 @@
 
 YooMail is a secondary development (fork) of [Nextcloud Mail](https://github.com/nextcloud/mail) 5.10.12, focused on **realtime delivery** and **instant reading** of emails.
 
-> [中文版 README](README-zh.md) · [Changelog](CHANGELOG.md) · [Deployment](help/DEPLOYMENT.md) · [Upstream diff & upgrade notes](help/UPSTREAM-DIFF-AND-UPGRADE.md) · [Code standards](help/CODE-STANDARDS.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+> [中文版 README](README-zh.md) · [Changelog](CHANGELOG.md) · [Deployment](help/DEPLOYMENT.md) · [Global notifications](help/GLOBAL-NOTIFICATIONS.md) · [Upstream diff & upgrade notes](help/UPSTREAM-DIFF-AND-UPGRADE.md) · [Code standards](help/CODE-STANDARDS.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 ## Highlights
 
@@ -16,6 +16,7 @@ YooMail is a secondary development (fork) of [Nextcloud Mail](https://github.com
 - Built-in **Workerman + IMAP IDLE** daemon, deeply integrated with Nextcloud
 - New emails are pushed **within seconds** — no manual refresh or polling required
 - The frontend automatically updates the mailbox list via WebSocket
+- Optional site-wide browser notifications, sound, bottom-right toast, and a themed top app icon marker while any page from the same Nextcloud site is open
 
 ### 🚀 Instant body caching
 - Message bodies are **persistently cached** after first render
