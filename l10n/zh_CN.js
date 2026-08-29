@@ -922,6 +922,7 @@ OC.L10N.register(
     "Could not configure Google integration" : "无法配置Google集成",
     "Google integration unlinked" : "已取消关联Google集成",
     "Could not unlink Google integration" : "无法取消关联Google集成",
+    "Client ID and client secret are required" : "客户端 ID 和客户端 secret 不能为空",
     "Client ID" : "客户端 ID",
     "Client secret" : "客户端 secret",
     "Unlink" : "取消关联",

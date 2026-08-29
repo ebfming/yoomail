@@ -827,6 +827,7 @@ OC.L10N.register(
     "Could not configure Google integration" : "Could not configure Google integration",
     "Google integration unlinked" : "Google integration unlinked",
     "Could not unlink Google integration" : "Could not unlink Google integration",
+    "Client ID and client secret are required" : "Client ID and client secret are required",
     "Client ID" : "Client ID",
     "Client secret" : "Client secret",
     "Unlink" : "Unlink",

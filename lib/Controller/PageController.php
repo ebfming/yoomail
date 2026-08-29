@@ -342,7 +342,7 @@ class PageController extends Controller {
 				'google-oauth-url',
 				'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
 					'client_id' => $googleOauthclientId,
-					'redirect_uri' => $this->urlGenerator->linkToRouteAbsolute('mail.googleIntegration.oauthRedirect'),
+					'redirect_uri' => $this->urlGenerator->linkToRouteAbsolute('yoomail.googleIntegration.oauthRedirect'),
 					'response_type' => 'code',
 					'prompt' => 'consent',
 					'state' => '_state_', // Replaced by frontend
@@ -359,7 +359,7 @@ class PageController extends Controller {
 				'microsoft-oauth-url',
 				"https://login.microsoftonline.com/$microsoftOauthTenantId/oauth2/v2.0/authorize?" . http_build_query([
 					'client_id' => $microsoftOauthClientId,
-					'redirect_uri' => $this->urlGenerator->linkToRouteAbsolute('mail.microsoftIntegration.oauthRedirect'),
+					'redirect_uri' => $this->urlGenerator->linkToRouteAbsolute('yoomail.microsoftIntegration.oauthRedirect'),
 					'response_type' => 'code',
 					'response_mode' => 'query',
 					'state' => '_state_', // Replaced by frontend

@@ -54,6 +54,24 @@
 	width: 100%;
 }
 
+#yoomail-admin-basic-settings .ym-admin-oauth-form {
+	display: grid;
+	grid-template-columns: minmax(120px, max-content) minmax(240px, 1fr);
+	gap: calc(var(--default-grid-baseline) * 2) calc(var(--default-grid-baseline) * 3);
+	align-items: center;
+	max-width: 640px;
+}
+
+#yoomail-admin-basic-settings .ym-admin-oauth-form input {
+	width: 100%;
+}
+
+#yoomail-admin-basic-settings .ym-admin-card-actions {
+	display: flex;
+	gap: calc(var(--default-grid-baseline) * 2);
+	margin-block-start: calc(var(--default-grid-baseline) * 3);
+}
+
 #yoomail-admin-basic-settings .ym-admin-health {
 	margin-block-end: calc(var(--default-grid-baseline) * 3);
 	padding: calc(var(--default-grid-baseline) * 3);

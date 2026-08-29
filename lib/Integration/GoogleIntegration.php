@@ -168,6 +168,6 @@ class GoogleIntegration {
 	}
 
 	public function getRedirectUrl(): string {
-		return $this->urlGenerator->linkToRouteAbsolute('mail.googleIntegration.oauthRedirect');
+		return $this->urlGenerator->linkToRouteAbsolute('yoomail.googleIntegration.oauthRedirect');
 	}
 }

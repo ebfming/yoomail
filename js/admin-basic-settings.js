@@ -8,6 +8,9 @@
 		health: null,
 		saving: false,
 		checking: false,
+		googleOauthClientId: '',
+		googleOauthRedirectUrl: '',
+		googleOauthSaving: false,
 	}
 
 	const root = document.getElementById('yoomail-admin-basic-settings')
@@ -18,6 +21,15 @@
 	const requestToken = OC.requestToken || document.head.getAttribute('data-requesttoken') || ''
 
 	const apiUrl = (path) => OC.generateUrl(`/apps/${appId}${path}`)
+	const passwordPlaceholder = '*****'
+
+	const loadInitialState = (key, fallback) => {
+		try {
+			return window.OCP?.InitialState?.loadState?.(appId, key, fallback) ?? fallback
+		} catch (error) {
+			return fallback
+		}
+	}
 
 	const request = async (path, options = {}) => {
 		const response = await fetch(apiUrl(path), {
@@ -34,7 +46,11 @@
 
 		const data = await response.json().catch(() => ({}))
 		if (!response.ok) {
-			const message = Array.isArray(data?.ocs?.data?.message) ? data.ocs.data.message.join(', ') : data?.message
+			const message = Array.isArray(data?.ocs?.data?.message)
+				? data.ocs.data.message.join(', ')
+				: Array.isArray(data?.data)
+					? data.data.join(', ')
+					: data?.data?.message || data?.message
 			throw new Error(message || t(appId, 'Request failed'))
 		}
 		return data
@@ -187,6 +203,25 @@
 						<input type="number" min="1" step="1" id="ym-local-attachment-cleanup-size" value="${escapeHtml(settings.localAttachmentCleanupSizeMb)}">
 					</div>
 				</div>
+
+				<div class="ym-admin-card">
+					<h3>${escapeHtml(t(appId, 'Gmail integration'))}</h3>
+					<p class="settings-hint">${escapeHtml(t(appId, 'Gmail allows users to access their email via IMAP. For security reasons this access is only possible with an OAuth 2.0 connection or Google accounts that use two-factor authentication and app passwords.'))}</p>
+					<p class="settings-hint">${escapeHtml(t(appId, 'You have to register a new Client ID for a "Web application" in the Google Cloud console. Add the URL {url} as authorized redirect URI.', {
+						url: state.googleOauthRedirectUrl,
+					}))}</p>
+					<p><code>${escapeHtml(state.googleOauthRedirectUrl || '')}</code></p>
+					<div class="ym-admin-oauth-form">
+						<label for="ym-google-oauth-client-id">${escapeHtml(t(appId, 'Client ID'))}</label>
+						<input type="text" id="ym-google-oauth-client-id" value="${escapeHtml(state.googleOauthClientId)}" ${state.googleOauthSaving ? 'disabled' : ''}>
+						<label for="ym-google-oauth-client-secret">${escapeHtml(t(appId, 'Client secret'))}</label>
+						<input type="password" id="ym-google-oauth-client-secret" value="${escapeHtml(state.googleOauthClientId ? passwordPlaceholder : '')}" ${state.googleOauthSaving ? 'disabled' : ''}>
+					</div>
+					<p class="ym-admin-card-actions">
+						<button type="button" class="primary" id="ym-save-google-oauth" ${state.googleOauthSaving ? 'disabled' : ''}>${escapeHtml(state.googleOauthSaving ? t(appId, 'Save') + '...' : t(appId, 'Save'))}</button>
+						<button type="button" id="ym-unlink-google-oauth" ${state.googleOauthSaving ? 'disabled' : ''}>${escapeHtml(t(appId, 'Unlink'))}</button>
+					</p>
+				</div>
 				</div>
 				<div class="ym-admin-actions">
 					<button type="button" class="primary" id="ym-save-basic-settings" ${state.saving ? 'disabled' : ''}>${escapeHtml(state.saving ? t(appId, 'Save') + '...' : t(appId, 'Save'))}</button>
@@ -196,6 +231,8 @@
 
 		root.querySelector('#ym-check-health')?.addEventListener('click', checkHealth)
 		root.querySelector('#ym-save-basic-settings')?.addEventListener('click', saveSettings)
+		root.querySelector('#ym-save-google-oauth')?.addEventListener('click', saveGoogleOauth)
+		root.querySelector('#ym-unlink-google-oauth')?.addEventListener('click', unlinkGoogleOauth)
 	}
 
 	const collectSettings = () => ({
@@ -249,7 +286,57 @@
 		}
 	}
 
+	const saveGoogleOauth = async () => {
+		const clientId = root.querySelector('#ym-google-oauth-client-id')?.value?.trim() || ''
+		const clientSecret = root.querySelector('#ym-google-oauth-client-secret')?.value || ''
+
+		if (!clientId || !clientSecret || clientSecret === passwordPlaceholder) {
+			OC.Notification.showTemporary(t(appId, 'Client ID and client secret are required'))
+			return
+		}
+
+		state.googleOauthSaving = true
+		render()
+		try {
+			const response = await request('/api/integration/google', {
+				method: 'POST',
+				body: {
+					clientId,
+					clientSecret,
+				},
+			})
+			state.googleOauthClientId = response?.data?.clientId || clientId
+			OC.Notification.showTemporary(t(appId, 'Google integration configured'))
+		} catch (error) {
+			OC.Notification.showTemporary(error.message || t(appId, 'Could not configure Google integration'))
+		} finally {
+			state.googleOauthSaving = false
+			render()
+		}
+	}
+
+	const unlinkGoogleOauth = async () => {
+		state.googleOauthSaving = true
+		render()
+		try {
+			await request('/api/integration/google', {
+				method: 'DELETE',
+			})
+			state.googleOauthClientId = ''
+			OC.Notification.showTemporary(t(appId, 'Google integration unlinked'))
+		} catch (error) {
+			OC.Notification.showTemporary(error.message || t(appId, 'Could not unlink Google integration'))
+		} finally {
+			state.googleOauthSaving = false
+			render()
+		}
+	}
+
 	Promise.resolve()
+		.then(() => {
+			state.googleOauthClientId = loadInitialState('google_oauth_client_id', '') || ''
+			state.googleOauthRedirectUrl = loadInitialState('google_oauth_redirect_url', '') || ''
+		})
 		.then(loadSettings)
 		.then(checkHealth)
 		.catch((error) => {

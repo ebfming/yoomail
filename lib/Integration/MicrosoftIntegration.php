@@ -183,6 +183,6 @@ class MicrosoftIntegration {
 	}
 
 	public function getRedirectUrl(): string {
-		return $this->urlGenerator->linkToRouteAbsolute('mail.microsoftIntegration.oauthRedirect');
+		return $this->urlGenerator->linkToRouteAbsolute('yoomail.microsoftIntegration.oauthRedirect');
 	}
 }
