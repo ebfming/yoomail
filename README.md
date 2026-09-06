@@ -48,7 +48,8 @@ YooMail is a secondary development (fork) of [Nextcloud Mail](https://github.com
 
 | Item | Value |
 |------|-------|
-| YooMail version | 0.1.0 |
+| YooMail version | 0.2.0 |
+| Internal version | b-2026.08.30 |
 | Based on Nextcloud Mail | 5.10.12 |
 | Supported Nextcloud | 32 – 35 |
 

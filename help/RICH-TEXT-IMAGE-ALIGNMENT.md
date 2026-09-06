@@ -7,7 +7,7 @@
 
 ## Scope
 
-This document records the `b-2026.08.21` rich-text editor change for image
+This document records the `b-2026.08.30` rich-text editor change for image
 alignment.
 
 Implemented:

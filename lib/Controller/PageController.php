@@ -171,9 +171,7 @@ class PageController extends Controller {
 
 		$this->initialStateService->provideInitialState(
 			'mailVersion',
-			$appInfoVersions['internal-version']
-				?? $appInfoVersions['base-app-version']
-				?? $this->appManager->getAppVersion('yoomail'),
+			$appInfoVersions['version'] ?? $this->appManager->getAppVersion('yoomail'),
 		);
 		$this->initialStateService->provideInitialState(
 			'internalVersion',
@@ -296,7 +294,7 @@ class PageController extends Controller {
 		$response = new TemplateResponse($this->appName, 'index');
 		$this->initialStateService->provideInitialState('preferences', [
 			'attachment-size-limit' => $this->config->getSystemValue('app.mail.attachment-size-limit', 0),
-			'app-version' => $this->config->getAppValue('yoomail', 'installed_version'),
+			'app-version' => $appInfoVersions['version'] ?? $this->config->getAppValue('yoomail', 'installed_version'),
 			'config-installed-version' => $this->config->getAppValue('yoomail', 'installed_version'),
 			'internal-version' => $appInfoVersions['internal-version'],
 			'config-internal-version' => $appInfoVersions['internal-version'],
@@ -568,10 +566,11 @@ class PageController extends Controller {
 	}
 
 	/**
-	 * @return array{base-app-version:?string, internal-version:?string}
+	 * @return array{version:?string, base-app-version:?string, internal-version:?string}
 	 */
 	private function readAppInfoVersions(): array {
 		$defaults = [
+			'version' => null,
 			'base-app-version' => null,
 			'internal-version' => null,
 		];
@@ -590,6 +589,7 @@ class PageController extends Controller {
 				return $defaults;
 			}
 			return [
+				'version' => $info['version'] ?? null,
 				'base-app-version' => $info['base-app-version'] ?? null,
 				'internal-version' => $info['internal-version'] ?? null,
 			];

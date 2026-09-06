@@ -10,6 +10,8 @@ All releases in this repository currently build on top of upstream
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-06
+
 ### Fixed
 
 - Hardened personal notification settings initial-state rendering by escaping
@@ -132,4 +134,5 @@ All releases in this repository currently build on top of upstream
   as multiple accounts, threading, encryption, S/MIME, and integration with
   Contacts, Calendar, and Files.
 
+[0.2.0]: https://github.com/tigersprite/yoomail/releases/tag/v0.2.0
 [0.1.0]: https://github.com/tigersprite/yoomail/releases/tag/v0.1.0

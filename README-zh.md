@@ -48,7 +48,8 @@ YooMail 是基于 [Nextcloud Mail](https://github.com/nextcloud/mail) 5.10.12 �
 
 | 项目 | 值 |
 |------|-----|
-| YooMail 版本 | 0.1.0 |
+| YooMail 版本 | 0.2.0 |
+| 内部版本 | b-2026.08.30 |
 | 基于 Nextcloud Mail | 5.10.12 |
 | 适用 Nextcloud | 32 – 35 |
 

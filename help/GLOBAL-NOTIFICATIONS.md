@@ -6,7 +6,7 @@
 
 > [中文版本](GLOBAL-NOTIFICATIONS-zh.md)
 
-This document records the current global notification implementation for `b-2026.08.21`.
+This document records the current global notification implementation for `b-2026.08.30`.
 
 ## Scope
 

@@ -298,6 +298,8 @@ OC.L10N.register(
     "About" : "关于",
     "Acknowledgements" : "致谢",
     "This application includes CKEditor, an open-source editor. Copyright © CKEditor contributors. Licensed under GPLv2." : "此应用程序包括开源编辑器 CKEditor。版权所有 © CKEditor 贡献者。根据 GPLv2 许可。",
+    "YooMail {version}" : "YooMail {version}",
+    "Internal version: {version}" : "内部版本为 {version}",
     "_After %n second_::_After %n seconds_" : ["%n 秒后"],
     "Automatically create tentative appointments in calendar" : "自动在日历中创建暂定预约",
     "No certificate" : "无证书",

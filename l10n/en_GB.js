@@ -203,6 +203,8 @@ OC.L10N.register(
     "About" : "About",
     "Acknowledgements" : "Acknowledgements",
     "This application includes CKEditor, an open-source editor. Copyright © CKEditor contributors. Licensed under GPLv2." : "This application includes CKEditor, an open-source editor. Copyright © CKEditor contributors. Licensed under GPLv2.",
+    "YooMail {version}" : "YooMail {version}",
+    "Internal version: {version}" : "Internal version: {version}",
     "_After %n second_::_After %n seconds_" : ["After %n second","After %n seconds"],
     "Automatically create tentative appointments in calendar" : "Automatically create tentative appointments in calendar",
     "No certificate" : "No certificate",

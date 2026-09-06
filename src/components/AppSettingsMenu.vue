@@ -10,6 +10,7 @@
 			:show-navigation="true"
 			:additional-trap-elements="trapElements"
 			:legacy="false"
+			no-version
 			:open.sync="showSettings">
 			<NcAppSettingsSection id="general" :name="t('yoomail', 'General')">
 				<NcButton
@@ -281,6 +282,9 @@
 				<NcFormGroup
 					:label="t('yoomail', 'Acknowledgements')"
 					:description="t('yoomail', 'This application includes CKEditor, an open-source editor. Copyright © CKEditor contributors. Licensed under GPLv2.')" />
+				<NcFormGroup
+					:label="t('yoomail', 'YooMail {version}', { version: mailVersion })"
+					:description="internalVersionLabel" />
 			</NcAppSettingsSection>
 		</NcAppSettingsDialog>
 	</div>
@@ -419,6 +423,16 @@ export default {
 
 		mailVersion() {
 			return this.mainStore.getPreference('mailVersion', '0.0.0')
+		},
+
+		internalVersion() {
+			return this.mainStore.getPreference('internalVersion', '')
+		},
+
+		internalVersionLabel() {
+			return this.internalVersion
+				? t('yoomail', 'Internal version: {version}', { version: this.internalVersion })
+				: ''
 		},
 
 		accountsWithEmail() {
