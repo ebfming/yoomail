@@ -53,6 +53,14 @@ YooMail is a secondary development (fork) of [Nextcloud Mail](https://github.com
 | Based on Nextcloud Mail | 5.10.12 |
 | Supported Nextcloud | 32 – 35 |
 
+## 0.2.0 release highlights
+
+- Global new-mail notifications now work across authenticated pages on the same Nextcloud site, including browser notifications, sound, YooMail toast, and the top app icon marker.
+- Realtime delivery is more resilient, with signed local IPC messages, safer reconnect behavior, and improved worker recovery.
+- Mailbox synchronization handles remote folder changes and stale local message records more reliably.
+- Rich-text composing now supports improved image alignment and inline image/text layout.
+- Gmail and Microsoft OAuth callbacks are aligned to YooMail routes for standalone distribution.
+
 ## Installation
 
 ### 1. Install the app

@@ -53,6 +53,14 @@ YooMail 是基于 [Nextcloud Mail](https://github.com/nextcloud/mail) 5.10.12 �
 | 基于 Nextcloud Mail | 5.10.12 |
 | 适用 Nextcloud | 32 – 35 |
 
+## 0.2.0 发布重点
+
+- 新增同站点全局新邮件通知,支持浏览器通知、声音提醒、YooMail 右下角弹窗和顶部 app 图标标记。
+- 增强 realtime 稳定性,包括本地 IPC 签名、前端重连优化和 worker 恢复能力。
+- 改进邮箱同步,更可靠地处理远程文件夹变化和本地过期邮件记录。
+- 富文本写信支持更好的图片对齐和图文同行排版。
+- Gmail 与 Microsoft OAuth 回调统一到 YooMail 自有路由,方便后续独立发布。
+
 ## 安装与部署
 
 ### 1. 安装应用
