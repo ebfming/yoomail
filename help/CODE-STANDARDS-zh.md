@@ -155,7 +155,10 @@ Shell 脚本使用 `#` 注释，XML 使用 `<!-- ... -->`，JS 使用块注释�
 - `id` 必须为小写 ASCII + 下划线，与目录名一致。
 - `version` 必须遵循 SemVer 并与 `CHANGELOG.md` 一致。
 - 保持 `bugs`、`website`、`repository`、`dependencies` 及时更新。
-- 发版时同时递增 `<version>` 和 `<internal-version>`（例如 `b-2026.08.13`），并在 `CHANGELOG.md` 中新增条目。
+- 发版时同时递增 `<version>` 和 `appinfo/info.xml` 中的 `internal-version`
+  注释，并在 `CHANGELOG.md` 中新增条目。
+- `internal-version` 记录开发分支或内部构建标识（例如 `b-2026.08.30`）。
+  正式 tag 和 App Store 发布包以合并后的 `public` 分支为准。
 
 ## 11. 安全
 

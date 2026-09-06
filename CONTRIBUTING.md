@@ -25,7 +25,7 @@ Be respectful and constructive. This project follows the
 1. **Search first** — check existing issues and this repository's docs
    (`help/`) to avoid duplicates.
 2. Create an issue with:
-   - YooMail version (`appinfo/info.xml` `<version>` + `<internal-version>`),
+   - YooMail version (`appinfo/info.xml` `<version>` + `internal-version` comment),
    - Nextcloud version,
    - mail provider / IMAP server (e.g. Tencent ExMail, QQ Mail, NetEase, ...),
    - steps to reproduce,

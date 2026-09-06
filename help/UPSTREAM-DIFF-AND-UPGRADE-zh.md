@@ -216,6 +216,7 @@ npm run build                     # 生产构建,产物写入 js/
 ## 7. 发版提醒
 
 - `appinfo/info.xml` 里的 `<version>` 要和 `CHANGELOG.md` 对齐
-- 每次内部发版都要同步更新 `<internal-version>`
+- 每次内部发版都要同步更新 `appinfo/info.xml` 中的 `internal-version` 注释
+- 正式 tag 与 App Store 发布包以合并后的 `public` 分支为准
 - 打包前确认 `l10n/` 与 `js/` 已更新
 - 发布包排除 `.git`、`node_modules`、`debug` 等非发布内容

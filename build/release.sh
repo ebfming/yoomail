@@ -10,7 +10,7 @@
 #
 # Environment (optional):
 #   NC_ROOT      Nextcloud root dir          (default: /web/nextcloud)
-#   NC_USER      User to run occ as          (default: www-data)
+#   NC_USER      User to run occ as          (default: owner of config/config.php)
 #   CERT_DIR     Directory with signing key  (default: $HOME/.nextcloud/certificates)
 #   SKIP_SIGN=1  Build unsigned tarball only (useful before the cert is approved)
 
@@ -20,8 +20,16 @@ APP_NAME="yoomail"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 NC_ROOT="${NC_ROOT:-/web/nextcloud}"
-NC_USER="${NC_USER:-www-data}"
-CERT_DIR="${CERT_DIR:-$HOME/.nextcloud/certificates}"
+APP_OWNER="$(stat -c '%U' "$APP_DIR")"
+APP_GROUP="$(stat -c '%G' "$APP_DIR")"
+if [ -z "${NC_USER:-}" ]; then
+	NC_USER="$(stat -c '%U' "$NC_ROOT/config/config.php")"
+fi
+if [ -z "${CERT_DIR:-}" ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+	CERT_DIR="$(eval echo "~$SUDO_USER")/.nextcloud/certificates"
+else
+	CERT_DIR="${CERT_DIR:-$HOME/.nextcloud/certificates}"
+fi
 PRIVATE_KEY="$CERT_DIR/$APP_NAME.key"
 CERTIFICATE="$CERT_DIR/$APP_NAME.crt"
 
@@ -61,12 +69,28 @@ if [ "${SKIP_SIGN:-0}" != "1" ]; then
 		echo "Error: signing key/certificate not found in $CERT_DIR (SKIP_SIGN=1 to build unsigned)." >&2
 		exit 1
 	fi
+	if [ "$(id -u)" -ne 0 ]; then
+		echo "Error: signed releases must be built as root so the signing key can be shared with $NC_USER temporarily." >&2
+		echo "Run: sudo CERT_DIR='$CERT_DIR' bash build/release.sh" >&2
+		exit 1
+	fi
 	echo "[2/3] Signing app"
-	"$NC_ROOT/occ" integrity:sign-app \
-		--privateKey="$PRIVATE_KEY" \
-		--certificate="$CERTIFICATE" \
-		--path="$APP_DIR/build/appstore/$APP_NAME" \
-		|| su "$NC_USER" -c "cd '$NC_ROOT' && php occ integrity:sign-app --privateKey='$PRIVATE_KEY' --certificate='$CERTIFICATE' --path='$APP_DIR/build/appstore/$APP_NAME'"
+	TMP_SIGN_DIR="$(mktemp -d)"
+	trap 'rm -rf "$TMP_SIGN_DIR"' EXIT
+	TMP_PRIVATE_KEY="$TMP_SIGN_DIR/$APP_NAME.key"
+	TMP_CERTIFICATE="$TMP_SIGN_DIR/$APP_NAME.crt"
+	cp -f "$PRIVATE_KEY" "$TMP_PRIVATE_KEY"
+	cp -f "$CERTIFICATE" "$TMP_CERTIFICATE"
+	chown "$NC_USER:$NC_USER" "$TMP_PRIVATE_KEY" "$TMP_CERTIFICATE"
+	chmod 600 "$TMP_PRIVATE_KEY"
+	chmod 644 "$TMP_CERTIFICATE"
+	chown -R "$NC_USER:$NC_USER" "build/appstore/$APP_NAME"
+	su "$NC_USER" -s /bin/sh -c "cd '$NC_ROOT' && php occ integrity:sign-app --privateKey='$TMP_PRIVATE_KEY' --certificate='$TMP_CERTIFICATE' --path='$APP_DIR/build/appstore/$APP_NAME'"
+	if [ ! -f "build/appstore/$APP_NAME/appinfo/signature.json" ]; then
+		echo "Error: app signing finished without appinfo/signature.json" >&2
+		exit 1
+	fi
+	chown -R "$APP_OWNER:$APP_GROUP" "build/appstore/$APP_NAME" 2>/dev/null || true
 fi
 
 echo "[3/3] Packaging"

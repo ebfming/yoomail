@@ -241,6 +241,7 @@ Also verify:
 ## 7. Release reminders
 
 - keep `<version>` in `appinfo/info.xml` aligned with `CHANGELOG.md`
-- bump `<internal-version>` on every internal release
+- bump the `internal-version` comment in `appinfo/info.xml` on every internal release
+- create official tags and App Store release archives from the merged `public` branch
 - make sure `l10n/` and `js/` are up to date before packaging
 - exclude `.git`, `node_modules`, and debug files from release packages

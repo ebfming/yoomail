@@ -24,7 +24,7 @@ YooMail is a secondary development (fork) of Nextcloud Mail, focused on **realti
 This app is built on top of Nextcloud Mail **5.10.12**, with compatibility fixes for special-use folders (Sent / Deleted / Drafts) on some Chinese mail providers (Tencent ExMail / QQ Mail, NetEase Mail, etc.).
 	]]></description>
 	<version>0.2.0</version>
-	<internal-version>b-2026.08.30</internal-version>
+	<!-- internal-version: b-2026.08.30 -->
 	<licence>AGPL-3.0-or-later</licence>
 	<author mail="dev@ebf.hk" homepage="https://github.com/ebfming/yoomail">adam</author>
 	<namespace>YooMail</namespace>

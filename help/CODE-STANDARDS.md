@@ -188,8 +188,11 @@ Shell scripts use `#` comments, XML uses `<!-- ... -->`, JS uses the block form.
 - `id` must be lowercase ASCII + underscores, matching the directory name.
 - `version` must follow SemVer and match `CHANGELOG.md`.
 - Keep `bugs`, `website`, `repository` and `dependencies` up to date.
-- When cutting a release, bump both `<version>` and `<internal-version>`
-  (e.g. `b-2026.08.13`) and add a `CHANGELOG.md` entry.
+- When cutting a release, bump both `<version>` and the `internal-version`
+  comment in `appinfo/info.xml`, then add a `CHANGELOG.md` entry.
+- `internal-version` records the development branch or internal build marker
+  (e.g. `b-2026.08.30`). Official tags and App Store release archives are
+  created from the merged `public` branch.
 
 ## 11. Security
 

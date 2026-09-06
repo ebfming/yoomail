@@ -591,10 +591,21 @@ class PageController extends Controller {
 			return [
 				'version' => $info['version'] ?? null,
 				'base-app-version' => $info['base-app-version'] ?? null,
-				'internal-version' => $info['internal-version'] ?? null,
+				'internal-version' => $info['internal-version'] ?? $this->readInternalVersionComment($infoXmlPath),
 			];
 		} catch (\Throwable $e) {
 			return $defaults;
 		}
+	}
+
+	private function readInternalVersionComment(string $infoXmlPath): ?string {
+		$contents = file_get_contents($infoXmlPath);
+		if ($contents === false) {
+			return null;
+		}
+		if (preg_match('/<!--\s*internal-version:\s*([^<]+?)\s*-->/i', $contents, $matches) !== 1) {
+			return null;
+		}
+		return trim($matches[1]);
 	}
 }
